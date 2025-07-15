@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{56BD4823-D2C7-4479-A159-9A724DD0C591}"
+	ProjectSection(SolutionItems) = preProject
+		src\NewFile1.txt = src\NewFile1.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{E802E3C4-3EB3-4D21-A8CE-3262A1315FD5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "folder.sync.service", "src\folder.sync.service\folder.sync.service.csproj", "{699363F5-5B45-4B43-94A6-EE1C103BD129}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{699363F5-5B45-4B43-94A6-EE1C103BD129} = {56BD4823-D2C7-4479-A159-9A724DD0C591}
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{699363F5-5B45-4B43-94A6-EE1C103BD129}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{699363F5-5B45-4B43-94A6-EE1C103BD129}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{699363F5-5B45-4B43-94A6-EE1C103BD129}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{699363F5-5B45-4B43-94A6-EE1C103BD129}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
