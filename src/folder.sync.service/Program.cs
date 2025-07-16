@@ -5,6 +5,7 @@ using folder.sync.service;
 using folder.sync.service.Logging;
 using folder.sync.service.Validation;
 using folder.sync.service.Configuration;
+using folder.sync.service.Infrastructure;
 
 
 var builder = Host.CreateApplicationBuilder();
@@ -61,7 +62,8 @@ try
 
     builder.Logging.AddSerilog(logger, dispose: true);
     builder.Services.AddSingleton(syncOptions);
-    builder.Services.AddHostedService<Worker>();
+    builder.Services.AddHostedService<FolderSyncService>();
+    builder.Services.AddSingleton<IFolderSyncPipeline, FolderSyncPipeline>();
 
     var app = builder.Build();
 
