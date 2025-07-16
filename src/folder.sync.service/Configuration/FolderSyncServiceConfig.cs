@@ -16,5 +16,5 @@ public class FolderSyncServiceConfig
 
     [Option('i', "IntervalInSec", Required = true, HelpText = "Interval in seconds must be greater than 0")]
     [Range(0, int.MaxValue, ErrorMessage = "Interval must be greater than 0")]
-    public int IntervalInSec { get; set; }
+    public int IntervalInSec { get; set; } = 1;
 }
