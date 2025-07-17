@@ -18,10 +18,10 @@ public static class FolderSyncValidationExtensions
             Environment.Exit(1);
         }
 
-        config.ValidatePath("Source", config.SourcePath, mustExist: true);
-        config.ValidatePath("Replica", config.ReplicaPath, mustExist: false);
+        config.ValidatePath("Source", config.SourcePath, true);
+        config.ValidatePath("Replica", config.ReplicaPath, false);
     }
-    
+
     private static void ValidatePath(this FolderSyncServiceConfig _, string label, string path, bool mustExist)
     {
         try
