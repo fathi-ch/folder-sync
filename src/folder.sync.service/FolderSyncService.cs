@@ -20,22 +20,19 @@ public class FolderSyncService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var timer = new PeriodicTimer(TimeSpan.FromSeconds(_config.IntervalInSec));
-
-        try
-        {
-            while (await timer.WaitForNextTickAsync(stoppingToken))
+        while (await timer.WaitForNextTickAsync(stoppingToken))
+            try
             {
                 await _folderSyncPipeline.RunAsync(stoppingToken);
             }
-        }
-        catch (Exception ex)
-        {
-            var flattened = $"{ex.GetType().Name}: {ex.Message}";
-            _logger.LogError("Error: {Type} | Msg: {Message} | Stack: {Stack}",
-                ex.GetType().Name,
-                ex.Message,
-                ex.StackTrace?.Split('\n').FirstOrDefault()?.Trim());
-        }
+            catch (Exception ex)
+            {
+                var flattened = $"{ex.GetType().Name}: {ex.Message}";
+                _logger.LogError("Error: {Type} | Msg: {Message} | Stack: {Stack}",
+                    ex.GetType().Name,
+                    ex.Message,
+                    ex.StackTrace?.Split('\n').FirstOrDefault()?.Trim());
+            }
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)
