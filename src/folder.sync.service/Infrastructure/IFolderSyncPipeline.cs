@@ -2,6 +2,6 @@ namespace folder.sync.service.Infrastructure;
 
 public interface IFolderSyncPipeline
 {
-    Task RunAsync(CancellationToken cancellationToken);
+    Task RunAsync(string sourcePath, string replicaPath, CancellationToken cancellationToken);
     Task StopAsync();
 }

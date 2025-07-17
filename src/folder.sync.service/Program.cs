@@ -65,6 +65,9 @@ try
     builder.Services.AddSingleton(syncOptions);
     builder.Services.AddHostedService<FolderSyncService>();
     builder.Services.AddSingleton<IFolderSyncPipeline, FolderSyncPipeline>();
+    // builder.Services.AddSingleton<IFileLoader, DummyLoaderTest>();
+    builder.Services.AddSingleton<IFileLabelingProcessor, DummyFileLabelingProcessor>();
+    builder.Services.AddSingleton<IFolderStateCache, FileFolderStateCache>();
 
     var app = builder.Build();
 
