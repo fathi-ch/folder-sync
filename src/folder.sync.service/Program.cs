@@ -5,7 +5,7 @@ using folder.sync.service;
 using folder.sync.service.Logging;
 using folder.sync.service.Validation;
 using folder.sync.service.Configuration;
-
+using folder.sync.service.Infrastructure;
 
 var builder = Host.CreateApplicationBuilder();
 
@@ -54,21 +54,23 @@ try
     else
     {
         syncOptions = builder.Configuration
-            .GetSection(FolderSyncServiceConfig.SectionName)
-            .Get<FolderSyncServiceConfig>() ?? throw new InvalidOperationException($"Missing section: {FolderSyncServiceConfig.SectionName}");
+                          .GetSection(FolderSyncServiceConfig.SectionName)
+                          .Get<FolderSyncServiceConfig>() ??
+                      throw new InvalidOperationException($"Missing section: {FolderSyncServiceConfig.SectionName}");
     }
+
     syncOptions.Validate();
 
-    builder.Logging.AddSerilog(logger, dispose: true);
+    builder.Logging.AddSerilog(logger, true);
     builder.Services.AddSingleton(syncOptions);
-    builder.Services.AddHostedService<Worker>();
+    builder.Services.AddHostedService<FolderSyncService>();
+    builder.Services.AddSingleton<IFolderSyncPipeline, FolderSyncPipeline>();
 
     var app = builder.Build();
 
     var log = app.Services.GetRequiredService<ILogger<Program>>();
-    log.LogInformation("Service startup complete");    
+    log.LogInformation("Service startup complete");
     app.Run();
-
 }
 catch (Exception ex)
 {

@@ -7,7 +7,7 @@ namespace folder.sync.service.Configuration;
 public class FolderSyncServiceConfig
 {
     public const string SectionName = "FolderSyncServiceConfig";
-    
+
     [Option('s', "SourcePath", Required = true, HelpText = "Source folder path")]
     public string SourcePath { get; set; }
 
