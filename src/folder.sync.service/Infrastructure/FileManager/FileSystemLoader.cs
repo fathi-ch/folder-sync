@@ -90,7 +90,7 @@ public class FileSystemLoader : IFileLoader
         }
         catch (OperationCanceledException)
         {
-            _logger.LogInformation("[Hash] {Path} canceled due to shutdown.", path);
+            _logger.LogWarning("[Hash] {Path} canceled due to shutdown.", path);
             return string.Empty;
         }
         catch (Exception ex)
