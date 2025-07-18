@@ -12,9 +12,7 @@ public class SyncLabeler : ISyncLabeler
         _logger = logger;
     }
 
-    public async IAsyncEnumerable<SyncTask> ProcessAsync(string sourcePath, IAsyncEnumerable<SyncEntry> sourceFiles,
-        string replicaPath, IAsyncEnumerable<SyncEntry> replicaFiles,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<SyncTask> ProcessAsync(string sourcePath, IAsyncEnumerable<SyncEntry> sourceFiles, string replicaPath, IAsyncEnumerable<SyncEntry> replicaFiles, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var sourceMap = new Dictionary<string, SyncEntry>();
         var destMap = new Dictionary<string, SyncEntry>();
@@ -45,7 +43,7 @@ public class SyncLabeler : ISyncLabeler
             if (ex is OperationCanceledException)
                 _logger.LogInformation("File loading canceled due to shutdown.");
             else
-                _logger.LogError(ex, "Failed to load source files from {SourcePath}", sourcePath);
+                _logger.LogError("Failed to load source files from {SourcePath}", sourcePath);
             yield break;
         }
 
@@ -75,7 +73,7 @@ public class SyncLabeler : ISyncLabeler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load replica files from {ReplicaPath}", replicaPath);
+            _logger.LogError("Failed to load replica files from {ReplicaPath}", replicaPath);
             yield break;
         }
 
@@ -111,18 +109,38 @@ public class SyncLabeler : ISyncLabeler
                 }
             }
 
-        foreach (var entry in destMap
-                     .Where(kvp => !sourceMap.ContainsKey(kvp.Key))
-                     .OrderByDescending(kvp => kvp.Value.Path.Count(c => c == Path.DirectorySeparatorChar)))
-        {
-            _logger.LogDebug("[DELETE] {Path}", entry.Value.Path);
-            yield return new SyncTask(SyncCommand.Delete, entry.Value, Path.Combine(sourcePath, entry.Value.Path));
-        }
+        // foreach (var entry in destMap
+        //              .Where(kvp => !sourceMap.ContainsKey(kvp.Key))
+        //              .OrderByDescending(kvp => kvp.Value.Path.Count(c => c == Path.DirectorySeparatorChar)))
+        // {
+        //     _logger.LogDebug("[DELETE] {Path}", entry.Value.Path);
+        //     yield return new SyncTask(SyncCommand.Delete, entry.Value, Path.Combine(sourcePath, entry.Value.Path));
+        // }
+         var deletes = destMap
+             .Where(kvp => !sourceMap.ContainsKey(kvp.Key))
+             .OrderBy(kvp => kvp.Key.Count(c => c == Path.DirectorySeparatorChar)) // Shortest path first
+             .Select(kvp => kvp.Value)
+             .ToList();
+        
+         var scheduled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        
+         foreach (var entry in deletes)
+         {
+             bool isChildOfScheduled = scheduled.Any(p =>
+                 entry.Path.StartsWith(p + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
+        
+             if (isChildOfScheduled)
+             {
+                 _logger.LogDebug("[SKIPPED DELETE] {Path} (parent already scheduled)", entry.Path);
+                 continue;
+             }
+        
+             scheduled.Add(entry.Path);
+             _logger.LogDebug("[DELETE] {Path}", entry.Path);
+             yield return new SyncTask(SyncCommand.Delete, entry, Path.Combine(sourcePath, entry.Path));
+       }
 
-        // TODO: Implement status 
-        _logger.LogInformation(
-            "Sync labeling completed. Detected: Create/Update/Delete for: {Dectected} items, Completed:{Done} ",
-            sourceMap.Count, destMap.Count);
+        
     }
 
     private string GetRelativePath(string fullPath, string rootPath)
