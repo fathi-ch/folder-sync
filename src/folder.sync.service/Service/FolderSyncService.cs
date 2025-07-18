@@ -1,7 +1,8 @@
 using folder.sync.service.Configuration;
 using folder.sync.service.Infrastructure;
+using folder.sync.service.Infrastructure.Pipeline;
 
-namespace folder.sync.service;
+namespace folder.sync.service.Service;
 
 public class FolderSyncService : BackgroundService
 {
@@ -24,6 +25,7 @@ public class FolderSyncService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var timer = new PeriodicTimer(TimeSpan.FromSeconds(_intervalInSec));
+
         while (await timer.WaitForNextTickAsync(stoppingToken))
             try
             {
@@ -31,7 +33,6 @@ public class FolderSyncService : BackgroundService
             }
             catch (Exception ex)
             {
-                var flattened = $"{ex.GetType().Name}: {ex.Message}";
                 _logger.LogError("Error: {Type} | Msg: {Message} | Stack: {Stack}",
                     ex.GetType().Name,
                     ex.Message,

@@ -1,4 +1,4 @@
-namespace folder.sync.service.Infrastructure;
+namespace folder.sync.service.Infrastructure.Pipeline;
 
 public interface IFolderSyncPipeline
 {

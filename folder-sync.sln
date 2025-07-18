@@ -1,9 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{56BD4823-D2C7-4479-A159-9A724DD0C591}"
-	ProjectSection(SolutionItems) = preProject
-		src\NewFile1.txt = src\NewFile1.txt
-	EndProjectSection
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{56BD4823-D2C7-4479-A159-9A724DD0C591}"	
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{E802E3C4-3EB3-4D21-A8CE-3262A1315FD5}"
 EndProject

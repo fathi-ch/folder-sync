@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace folder.sync.service.Infrastructure;
+namespace folder.sync.service.Infrastructure.State;
 
 public class FileFolderStateCache : IFolderStateCache
 {
