@@ -13,7 +13,7 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
 
     // Configurable
     private const int BatchSize = 10;
-    private static readonly TimeSpan FlushInterval = TimeSpan.FromMilliseconds(200);
+    private static readonly TimeSpan FlushInterval = TimeSpan.FromMilliseconds(500);
 
     public BatchSyncTaskConsumer(ISyncCommandFactory syncCommandFactory,
         FolderSyncServiceConfig config)
@@ -37,6 +37,7 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
         {
             while (!cancellationToken.IsCancellationRequested)
             {
+                // Read all available items or until batch size is reached
                 while (reader.Reader.TryRead(out var task))
                 {
                     buffer.Add(task);
@@ -45,9 +46,9 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
                         break;
                 }
 
-                // Flush either on interval or batch full
-                if (buffer.Count > 0 && (!await flushTimer.WaitForNextTickAsync(cancellationToken) ||
-                                         buffer.Count >= BatchSize))
+                // If buffer has items and either the batch size is met or flush interval elapsed
+                if (buffer.Count >= BatchSize || 
+                    (buffer.Count > 0 && await flushTimer.WaitForNextTickAsync(cancellationToken)))
                 {
                     foreach (var syncTask in buffer)
                     {

@@ -2,5 +2,5 @@ namespace folder.sync.service.Infrastructure.FileManager;
 
 public interface IFileLoader
 {
-    IAsyncEnumerable<SyncEntry> LoadFilesAsync(string path);
+    IAsyncEnumerable<SyncEntry> LoadFilesAsync(string path, CancellationToken cancellationToken);
 }

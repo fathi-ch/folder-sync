@@ -1,8 +1,9 @@
+using System.Runtime.CompilerServices;
 using folder.sync.service.Infrastructure.FileManager;
 
 namespace folder.sync.service.Infrastructure.Labeling;
 
-public class DummySyncLabeler(ILogger<DummySyncLabeler> logger) : ISyncLabeler
+public class SyncLabeler(ILogger<SyncLabeler> logger) : ISyncLabeler
 {
     private string GetRelativePath(string fullPath, string rootPath)
     {
@@ -14,13 +15,17 @@ public class DummySyncLabeler(ILogger<DummySyncLabeler> logger) : ISyncLabeler
         IAsyncEnumerable<SyncEntry> sourceFiles,
         string replicaPath,
         IAsyncEnumerable<SyncEntry> replicaFiles,
-        CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var source = await sourceFiles.ToListAsync(cancellationToken);
-        var sourceMap = source.ToDictionary(f => GetRelativePath(f.Path, sourcePath));
+        
+        var sourceMap = new Dictionary<string, SyncEntry>();
+        await foreach (var src in sourceFiles.WithCancellation(cancellationToken))
+            sourceMap[GetRelativePath(src.Path, sourcePath)] = src;
 
-        var dest = await replicaFiles.ToListAsync(cancellationToken);
-        var destMap = dest.ToDictionary(f => GetRelativePath(f.Path, replicaPath));
+        var destMap = new Dictionary<string, SyncEntry>();
+        await foreach (var dst in replicaFiles.WithCancellation(cancellationToken))
+            destMap[GetRelativePath(dst.Path, replicaPath)] = dst;
+        
 
         foreach (var folder in sourceMap.Values
                      .OfType<FolderEntry>()
