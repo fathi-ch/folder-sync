@@ -5,6 +5,7 @@ using CommandLine.Text;
 using folder.sync.service.Logging;
 using folder.sync.service.Validation;
 using folder.sync.service.Configuration;
+using folder.sync.service.Infrastructure;
 using folder.sync.service.Infrastructure.Commanding;
 using folder.sync.service.Infrastructure.FileManager;
 using folder.sync.service.Infrastructure.Labeling;
@@ -78,7 +79,8 @@ try
     builder.Services.AddSingleton(Channel.CreateUnbounded<SyncTask>());
     builder.Services.AddSingleton<ISyncTaskProducer, SyncTaskProducer>();
     builder.Services.AddSingleton<ICommandExecutor, ConcurrentCommandExecutor>(
-        _ => new ConcurrentCommandExecutor(maxConcurrency: 4));
+        _ => new ConcurrentCommandExecutor(4));
+    builder.Services.AddSingleton<IBatchState, BatchState>();
     builder.Services.AddSingleton<ISyncTaskConsumer, BatchSyncTaskConsumer>();
 
 

@@ -1,3 +1,3 @@
 namespace folder.sync.service.Infrastructure.FileManager;
 
-public record FolderEntry(string Path, DateTime LastModified) : SyncEntry(Path, LastModified);
+public record FolderEntry(string Path, long Size, DateTime LastModified) : SyncEntry(Path, Size, LastModified);

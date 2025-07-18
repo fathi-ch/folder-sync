@@ -30,7 +30,7 @@ public class FileSystemLoader : IFileLoader
             try
             {
                 var dirInfo = new DirectoryInfo(currentDir);
-                folderEntry = new FolderEntry(dirInfo.FullName, dirInfo.LastWriteTimeUtc);
+                folderEntry = new FolderEntry(dirInfo.FullName, 0, dirInfo.LastWriteTimeUtc);
             }
             catch (Exception ex)
             {
@@ -87,6 +87,11 @@ public class FileSystemLoader : IFileLoader
             using var sha256 = SHA256.Create();
             var hash = await sha256.ComputeHashAsync(stream, cancellationToken);
             return Convert.ToHexString(hash);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("[Hash] {Path} canceled due to shutdown.", path);
+            return string.Empty;
         }
         catch (Exception ex)
         {

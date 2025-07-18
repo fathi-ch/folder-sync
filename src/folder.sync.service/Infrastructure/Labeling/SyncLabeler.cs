@@ -42,7 +42,10 @@ public class SyncLabeler : ISyncLabeler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load source files from {SourcePath}", sourcePath);
+            if (ex is OperationCanceledException)
+                _logger.LogInformation("File loading canceled due to shutdown.");
+            else
+                _logger.LogError(ex, "Failed to load source files from {SourcePath}", sourcePath);
             yield break;
         }
 
@@ -117,7 +120,9 @@ public class SyncLabeler : ISyncLabeler
         }
 
         // TODO: Implement status 
-        _logger.LogInformation("Sync labeling completed. Detected: Create/Update/Delete for: {Dectected} items, Completed:{Done} ", sourceMap.Count , destMap.Count);
+        _logger.LogInformation(
+            "Sync labeling completed. Detected: Create/Update/Delete for: {Dectected} items, Completed:{Done} ",
+            sourceMap.Count, destMap.Count);
     }
 
     private string GetRelativePath(string fullPath, string rootPath)
