@@ -39,5 +39,4 @@ public class SyncTaskConsumer : ISyncTaskConsumer
                 // Optional: push to stagingQueue for retry
             }
     }
-    
 }
