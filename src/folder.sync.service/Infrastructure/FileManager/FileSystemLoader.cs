@@ -1,3 +1,6 @@
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+
 namespace folder.sync.service.Infrastructure.FileManager;
 
 public class FileSystemLoader : IFileLoader
@@ -9,74 +12,85 @@ public class FileSystemLoader : IFileLoader
         _logger = logger;
     }
 
-    public async IAsyncEnumerable<SyncEntry> LoadFilesAsync(string path, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<SyncEntry> LoadFilesAsync(string rootPath, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        if (!Directory.Exists(path))
-        {
-            _logger.LogError("Source Path does not exist: {Path}", path);
+        if (!Directory.Exists(rootPath))
             yield break;
-        }
-        
-        var entries = Directory.EnumerateFileSystemEntries(path,"*", SearchOption.AllDirectories);
 
-        foreach (var entry in entries)
+        var pending = new Stack<string>();
+        pending.Push(rootPath);
+
+        while (pending.Count > 0)
         {
-            if(cancellationToken.IsCancellationRequested)
-               yield break;
+            cancellationToken.ThrowIfCancellationRequested();
+            var currentDir = pending.Pop();
 
-            SyncEntry? result = null;
-
+            FolderEntry? folderEntry = null;
             try
             {
-                var info = new FileInfo(entry);
-                if (info.Exists)
-                {
-                    var hash = await ComputeHashAsync(info.FullName, cancellationToken);
-                    result = new FileEntry(
-                        Path: info.FullName,
-                        Size: info.Length,
-                        LastModified: info.LastWriteTimeUtc,
-                        Hash: hash
-                    ); 
-                }
-                else
-                {
-                    var dirInfo = new DirectoryInfo(entry);
-                    if (dirInfo.Exists)
-                    {
-                        result = new FolderEntry(
-                            Path: dirInfo.FullName,
-                            LastModified: dirInfo.LastWriteTimeUtc
-                        );
-                    }
-                }
-
+                var dirInfo = new DirectoryInfo(currentDir);
+                folderEntry = new FolderEntry(dirInfo.FullName, dirInfo.LastWriteTimeUtc);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load entry: {Entry}", entry);
-                continue;
+                _logger.LogError("[Dir] {currentDir} skipped: {ex.Message}", currentDir, ex.Message);
             }
-            if (result is not null)
-                yield return result;
 
-            await Task.Yield();
+            if (folderEntry is not null)
+                yield return folderEntry;
+
+            var files = Array.Empty<string>();
+            string[] subdirs = Array.Empty<string>();
+            try
+            {
+                files = Directory.GetFiles(currentDir);
+                subdirs = Directory.GetDirectories(currentDir);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[Access] {currentDir}: {ex.Message}", currentDir, ex.Message);
+            }
+
+            foreach (var file in files)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                FileEntry? fileEntry = null;
+
+                try
+                {
+                    var fi = new FileInfo(file);
+                    if (fi.Exists)
+                    {
+                        var hash = await ComputeFileHashAsync(fi.FullName, cancellationToken);
+                        fileEntry = new FileEntry(fi.FullName, fi.Length, fi.LastWriteTimeUtc, hash);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("[File] {file} skipped: {ex.Message}",file, ex.Message);
+                }
+
+                if (fileEntry is not null)
+                    yield return fileEntry;
+            }
+
+            foreach (var subdir in subdirs) pending.Push(subdir);
         }
     }
-    
-    private async Task<string> ComputeHashAsync(string filePath, CancellationToken cancellationToken)
+
+    private async Task<string> ComputeFileHashAsync(string path, CancellationToken cancellationToken)
     {
         try
         {
-            using var stream = File.OpenRead(filePath);
-            using var sha256 = System.Security.Cryptography.SHA256.Create();
-            var hashBytes = await sha256.ComputeHashAsync(stream, cancellationToken);
-            return Convert.ToHexString(hashBytes);
+            await using var stream = File.OpenRead(path);
+            using var sha256 = SHA256.Create();
+            var hash = await sha256.ComputeHashAsync(stream, cancellationToken);
+            return Convert.ToHexString(hash);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to compute hash for {Path}", filePath);
-            return "HASH_FAIL";
+            _logger.LogError("[Hash] {path} skipped: {ex.Message}", path, ex.Message);
+            return string.Empty;
         }
     }
 }

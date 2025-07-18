@@ -3,29 +3,39 @@ using folder.sync.service.Infrastructure.FileManager;
 
 namespace folder.sync.service.Infrastructure.Labeling;
 
-public class SyncLabeler(ILogger<SyncLabeler> logger) : ISyncLabeler
+public class SyncLabeler : ISyncLabeler
 {
-    private string GetRelativePath(string fullPath, string rootPath)
+    private readonly ILogger<SyncLabeler> _logger;
+    public SyncLabeler(ILogger<SyncLabeler> logger)
     {
-        return Path.GetRelativePath(rootPath, fullPath).Replace('\\', '/');
+        _logger = logger;
     }
-
-    public async IAsyncEnumerable<SyncTask> ProcessAsync(
-        string sourcePath,
-        IAsyncEnumerable<SyncEntry> sourceFiles,
-        string replicaPath,
-        IAsyncEnumerable<SyncEntry> replicaFiles,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+    
+    public async IAsyncEnumerable<SyncTask> ProcessAsync(string sourcePath, IAsyncEnumerable<SyncEntry> sourceFiles, string replicaPath, IAsyncEnumerable<SyncEntry> replicaFiles, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        
         var sourceMap = new Dictionary<string, SyncEntry>();
-        await foreach (var src in sourceFiles.WithCancellation(cancellationToken))
-            sourceMap[GetRelativePath(src.Path, sourcePath)] = src;
+        try
+        {
+            await foreach (var src in sourceFiles.WithCancellation(cancellationToken))
+                sourceMap[GetRelativePath(src.Path, sourcePath)] = src;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Failed to load source files: {ex.Message}", ex.Message);
+            yield break;
+        }
 
         var destMap = new Dictionary<string, SyncEntry>();
-        await foreach (var dst in replicaFiles.WithCancellation(cancellationToken))
-            destMap[GetRelativePath(dst.Path, replicaPath)] = dst;
-        
+        try
+        {
+            await foreach (var dst in replicaFiles.WithCancellation(cancellationToken))
+                destMap[GetRelativePath(dst.Path, replicaPath)] = dst;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Failed to load replica files: {ex.Message}", ex.Message);
+            yield break;
+        }
 
         foreach (var folder in sourceMap.Values
                      .OfType<FolderEntry>()
@@ -43,10 +53,14 @@ public class SyncLabeler(ILogger<SyncLabeler> logger) : ISyncLabeler
                         yield return new SyncTask(SyncCommand.Update, srcFile);
             }
 
-
         foreach (var entry in destMap
                      .Where(kvp => !sourceMap.ContainsKey(kvp.Key))
                      .OrderByDescending(kvp => kvp.Value.Path.Count(c => c == Path.DirectorySeparatorChar)))
             yield return new SyncTask(SyncCommand.Delete, entry.Value);
+    }
+
+    private string GetRelativePath(string fullPath, string rootPath)
+    {
+        return Path.GetRelativePath(rootPath, fullPath).Replace('\\', '/');
     }
 }
