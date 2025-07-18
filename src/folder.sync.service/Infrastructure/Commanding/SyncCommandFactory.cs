@@ -20,13 +20,10 @@ public class SyncCommandFactory : ISyncCommandFactory
 
         return task.Command switch
         {
-            SyncCommand.Create when task.Entry is FileEntry f => new CreateFileSyncCommand(
-                f with { Path = fullSourcePath }, fullDestPath, _loggerFactory.CreateLogger<CreateFileSyncCommand>()),
-            SyncCommand.Update when task.Entry is FileEntry f => new UpdateFileSyncCommand(
-                f with { Path = fullSourcePath }, fullDestPath, _loggerFactory.CreateLogger<UpdateFileSyncCommand>()),
-            SyncCommand.Create when task.Entry is FolderEntry => new CreateFolderSyncCommand(fullDestPath,
-                _loggerFactory.CreateLogger<CreateFolderSyncCommand>()),
-            SyncCommand.Delete => new DeleteSyncCommand(fullDestPath, _loggerFactory.CreateLogger<DeleteSyncCommand>()),
+          //  SyncCommand.Create when task.Entry is FileEntry f => new CreateFileSyncCommand(f with { Path = fullSourcePath }, fullDestPath, _loggerFactory.CreateLogger<CreateFileSyncCommand>()),
+          //  SyncCommand.Update when task.Entry is FileEntry f => new UpdateFileSyncCommand(f with { Path = fullSourcePath }, fullDestPath, _loggerFactory.CreateLogger<UpdateFileSyncCommand>()),
+          //  SyncCommand.Create when task.Entry is FolderEntry => new CreateFolderSyncCommand(fullDestPath, _loggerFactory.CreateLogger<CreateFolderSyncCommand>()),
+            SyncCommand.Delete => new DeleteSyncCommand( fullDestPath, _loggerFactory.CreateLogger<DeleteSyncCommand>()),
 
             _ => throw new InvalidOperationException($"Unhandled task: {task.Command} for {task.Entry.Path}")
         };

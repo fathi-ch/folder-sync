@@ -1,60 +1,61 @@
 using System.Diagnostics;
 using folder.sync.service.Infrastructure.FileManager;
+using folder.sync.service.Infrastructure.Labeling;
 
 namespace folder.sync.service.Infrastructure.Commanding;
 
-public record CreateFileSyncCommand(SyncEntry Source, string ReplicaPath, ILogger<CreateFileSyncCommand> _logger)
-    : ISyncCommand
+public record CreateFileSyncCommand : ISyncCommand
 {
-    private ILogger<CreateFileSyncCommand> _logger = _logger;
+    private readonly ILogger<CreateFileSyncCommand> _logger;
+    private readonly SyncEntry _source;
+    private readonly string _replicaPath;
+
+    public CreateFileSyncCommand(SyncEntry source, string replicaPath, ILogger<CreateFileSyncCommand> logger)
+    {
+        _logger = logger;
+        _source = source;
+        _replicaPath = replicaPath;
+    }
 
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         try
         {
-            var destDir = Path.GetDirectoryName(ReplicaPath);
+            var destDir = Path.GetDirectoryName(_replicaPath);
             if (!Directory.Exists(destDir))
                 Directory.CreateDirectory(destDir!);
 
-            await using var src = new FileStream(Source.Path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920,
+            await using var src = new FileStream(_source.Path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920,
                 true);
-            await using var dst = new FileStream(ReplicaPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920,
+            await using var dst = new FileStream(_replicaPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920,
                 true);
 
-            _logger.LogInformation("Copying file from {Source} to {Destination} of Size: {Size} bytes", Source.Path,
-                ReplicaPath, src.Length);
+            _logger.LogInformation("Copying file from {Source} to {Destination} of Size: {Size} bytes", _source.Path,
+                _replicaPath, src.Length);
 
             var stopwatch = Stopwatch.StartNew();
             await src.CopyToAsync(dst, cancellationToken);
             stopwatch.Stop();
 
             var speed = src.Length / stopwatch.Elapsed.TotalSeconds;
-            _logger.LogInformation("Copy completed in {Duration}ms with throughput: {Speed:N0} bytes/sec",
-                stopwatch.ElapsedMilliseconds, speed);
+            _logger.LogDebug("Copy completed in {Duration}ms with throughput: {Speed:N0} bytes/sec", stopwatch.ElapsedMilliseconds, speed);
+                 
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
-            _logger.LogWarning("File copy operation was canceled. Source: {Source}, Destination: {Destination}",
-                Source.Path, ReplicaPath);
-            throw;
+            _logger.LogWarning("File copy operation was canceled. Source: {Source}, Destination: {Destination}", _source.Path, _replicaPath);
         }
         catch (UnauthorizedAccessException ex)
         {
-            _logger.LogError(ex, "Access denied during file copy. Source: {Source}, Destination: {Destination}",
-                Source.Path, ReplicaPath);
-            throw;
+            _logger.LogError("Access denied during file copy. Source: {Source}, Destination: {Destination}", _source.Path, _replicaPath);
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "I/O error during file copy. Source: {Source}, Destination: {Destination}",
-                Source.Path, ReplicaPath);
-            throw;
+            _logger.LogError("I/O error during file copy. Source: {Source}, Destination: {Destination}", _source.Path, _replicaPath);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error during file copy. Source: {Source}, Destination: {Destination}",
-                Source.Path, ReplicaPath);
-            throw;
+            _logger.LogError("Unexpected error during file copy. Source: {Source}, Destination: {Destination}", _source.Path, _replicaPath);
         }
     }
 }

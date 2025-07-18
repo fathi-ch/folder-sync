@@ -2,12 +2,20 @@ using folder.sync.service.Infrastructure.FileManager;
 
 namespace folder.sync.service.Infrastructure.Commanding;
 
-public record UpdateFileSyncCommand(SyncEntry Source, string ReplicaPath, ILogger<UpdateFileSyncCommand> logger)
-    : ISyncCommand
+public record UpdateFileSyncCommand : ISyncCommand
 {
-    private readonly ILogger<UpdateFileSyncCommand> _logger = logger;
+    private readonly ILogger<UpdateFileSyncCommand> _logger;
+    private readonly SyncEntry _source;
+    private readonly string _replicaPath;
 
-    public async Task ExecuteAsync(CancellationToken CancellationToken)
+    public UpdateFileSyncCommand(SyncEntry source, string replicaPath,ILogger<UpdateFileSyncCommand> logger)
+    {
+        _logger = logger;
+        _source = source;
+        _replicaPath = replicaPath;
+    }
+
+    public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Updating file...");
 

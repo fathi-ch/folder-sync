@@ -1,14 +1,37 @@
+using folder.sync.service.Infrastructure.Labeling;
+
 namespace folder.sync.service.Infrastructure.Commanding;
 
-public record DeleteSyncCommand(string PathToDelete, ILogger<DeleteSyncCommand> logger) : ISyncCommand
+public class DeleteSyncCommand : ISyncCommand
 {
-    private readonly ILogger<DeleteSyncCommand> _logger = logger;
+    private readonly ILogger<DeleteSyncCommand> _logger;
+    private readonly string _pathToDelete;
+
+    public DeleteSyncCommand(string pathToDelete, ILogger<DeleteSyncCommand> logger)
+    {
+        _pathToDelete = pathToDelete;
+        _logger = logger;
+    }
 
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        Console.WriteLine("Deleting folder...");
-        // if (File.Exists(PathToDelete)) File.Delete(PathToDelete);
-        // else if (Directory.Exists(PathToDelete)) Directory.Delete(PathToDelete, recursive: true);
-        // return Task.CompletedTask;
+        try
+        {
+            _logger.LogInformation("Deleting: {Path}", _pathToDelete);
+
+            if (File.Exists(_pathToDelete))
+                File.Delete(_pathToDelete);
+            else if (Directory.Exists(_pathToDelete))
+                Directory.Delete(_pathToDelete, recursive: true);
+            else
+                _logger.LogWarning("Nothing to delete at: {Path}", _pathToDelete);
+          
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Delete failed: {Path}", _pathToDelete);
+        }
+
+        await Task.CompletedTask;
     }
 }
