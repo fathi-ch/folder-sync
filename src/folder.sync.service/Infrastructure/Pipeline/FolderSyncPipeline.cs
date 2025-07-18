@@ -10,39 +10,39 @@ public class FolderSyncPipeline : IFolderSyncPipeline
 {
     private readonly ILogger<FolderSyncPipeline> _logger;
 
-    //private readonly IFileLoader _fileLoader;
+    private readonly IFileLoader _syncEntryFileLoader;
     private readonly ISyncLabeler _syncLabeler;
-    private readonly IFolderStateCache _folderStateCache;
+    private readonly IFolderStateCache _syncFolderStateCache;
     private readonly ISyncTaskProducer _syncTaskProducer;
     private readonly Channel<SyncTask> _taskQueueChannel;
     private readonly ISyncTaskConsumer _batchSyncTaskConsumer;
 
-    private const string STATE_PATH = ".cache/folder_state.json";
+    private const string StateFilePath = ".cache/folder_state.json";
 
     public FolderSyncPipeline(ILogger<FolderSyncPipeline> logger, ISyncLabeler syncLabeler,
-        IFolderStateCache folderStateCache, Channel<SyncTask> taskQueueChannel, ISyncTaskProducer syncTaskProducer,
-        ISyncTaskConsumer batchSyncTaskConsumer)
+        IFolderStateCache syncFolderStateCache, Channel<SyncTask> taskQueueChannel, ISyncTaskProducer syncTaskProducer,
+        ISyncTaskConsumer batchSyncTaskConsumer, IFileLoader syncEntryFileLoader)
     {
         _taskQueueChannel = taskQueueChannel;
         _syncTaskProducer = syncTaskProducer;
         _batchSyncTaskConsumer = batchSyncTaskConsumer;
-        _folderStateCache = folderStateCache;
+        _syncEntryFileLoader = syncEntryFileLoader;
+        _syncFolderStateCache = syncFolderStateCache;
         _syncLabeler = syncLabeler;
         _logger = logger;
     }
 
     public async Task RunAsync(string sourcePath, string replicaPath, CancellationToken cancellationToken)
     {
-        var loaderS = new DummyLoaderTest(true);
-        var sourceFiles = loaderS.LoadFilesAsync(sourcePath);
 
-        var actualState = await FolderStateDeterminer.DetermineAsync(sourceFiles);
-        var oldState = await _folderStateCache.GetAsync(STATE_PATH);
+        var sourceFiles =  _syncEntryFileLoader.LoadFilesAsync(sourcePath, cancellationToken);
+        // var actualState = await FolderStateDeterminer.DetermineAsync(sourceFiles);
+        // var oldState = await _syncFolderStateCache.GetAsync(StateFilePath);
 
-        if (oldState == null || !oldState.Equals(actualState))
-        {
-            var loaderR = new DummyLoaderTest(false);
-            var replicaFiles = loaderR.LoadFilesAsync(replicaPath);
+        // if (oldState == null || !oldState.Equals(actualState))
+        // {
+            
+            var replicaFiles = _syncEntryFileLoader.LoadFilesAsync(replicaPath, cancellationToken);
 
             var task = _syncLabeler.ProcessAsync(sourcePath, sourceFiles, replicaPath, replicaFiles, cancellationToken);
 
@@ -51,12 +51,13 @@ public class FolderSyncPipeline : IFolderSyncPipeline
             _ = _batchSyncTaskConsumer.StartAsync(_taskQueueChannel, cancellationToken);
 
             _logger.LogInformation("Loading completed.");
-            await _folderStateCache.SetAsync(sourcePath, actualState);
-        }
-        else
-        {
-            _logger.LogInformation(" No changes detected.");
-        }
+            Task.Delay(TimeSpan.FromMicroseconds(2), cancellationToken);
+            //   await _syncFolderStateCache.SetAsync(sourcePath, actualState);
+            // }
+            // else
+            // {
+            //     _logger.LogInformation(" No changes detected.");
+            // }
     }
 
     public async Task StopAsync()

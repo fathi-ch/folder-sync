@@ -6,6 +6,7 @@ using folder.sync.service.Logging;
 using folder.sync.service.Validation;
 using folder.sync.service.Configuration;
 using folder.sync.service.Infrastructure.Commanding;
+using folder.sync.service.Infrastructure.FileManager;
 using folder.sync.service.Infrastructure.Labeling;
 using folder.sync.service.Infrastructure.Pipeline;
 using folder.sync.service.Infrastructure.Queue;
@@ -70,8 +71,8 @@ try
     builder.Services.AddSingleton(syncOptions);
     builder.Services.AddHostedService<FolderSyncService>();
     builder.Services.AddSingleton<IFolderSyncPipeline, FolderSyncPipeline>();
-    // builder.Services.AddSingleton<IFileLoader, DummyLoaderTest>();
-    builder.Services.AddSingleton<ISyncLabeler, DummySyncLabeler>();
+    builder.Services.AddSingleton<IFileLoader, FileSystemLoader>();
+    builder.Services.AddSingleton<ISyncLabeler, SyncLabeler>();
     builder.Services.AddSingleton<IFolderStateCache, FileFolderStateCache>();
     builder.Services.AddSingleton<ISyncCommandFactory, SyncCommandFactory>();
     builder.Services.AddSingleton(Channel.CreateUnbounded<SyncTask>());

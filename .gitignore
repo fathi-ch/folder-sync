@@ -48,7 +48,7 @@ Thumbs.db
 src/TestResults/
 **/.vscode/
 **/.idea/
-**/.cache/
+**/.cache/**
 
 # Local .terraform directories
 **/.terraform/*
