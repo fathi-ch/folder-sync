@@ -1,11 +1,16 @@
+using System.Threading.Channels;
 using Serilog;
 using CommandLine;
 using CommandLine.Text;
-using folder.sync.service;
 using folder.sync.service.Logging;
 using folder.sync.service.Validation;
 using folder.sync.service.Configuration;
-using folder.sync.service.Infrastructure;
+using folder.sync.service.Infrastructure.Commanding;
+using folder.sync.service.Infrastructure.Labeling;
+using folder.sync.service.Infrastructure.Pipeline;
+using folder.sync.service.Infrastructure.Queue;
+using folder.sync.service.Infrastructure.State;
+using folder.sync.service.Service;
 
 var builder = Host.CreateApplicationBuilder();
 
@@ -65,6 +70,14 @@ try
     builder.Services.AddSingleton(syncOptions);
     builder.Services.AddHostedService<FolderSyncService>();
     builder.Services.AddSingleton<IFolderSyncPipeline, FolderSyncPipeline>();
+    // builder.Services.AddSingleton<IFileLoader, DummyLoaderTest>();
+    builder.Services.AddSingleton<ISyncLabeler, DummySyncLabeler>();
+    builder.Services.AddSingleton<IFolderStateCache, FileFolderStateCache>();
+    builder.Services.AddSingleton<ISyncCommandFactory, SyncCommandFactory>();
+    builder.Services.AddSingleton(Channel.CreateUnbounded<SyncTask>());
+    builder.Services.AddSingleton<ISyncTaskProducer, SyncTaskProducer>();
+    builder.Services.AddSingleton<ISyncTaskConsumer, BatchSyncTaskConsumer>();
+
 
     var app = builder.Build();
 
