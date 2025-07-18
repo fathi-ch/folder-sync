@@ -1,7 +1,9 @@
 namespace folder.sync.service.Infrastructure.Commanding;
 
-public record DeleteSyncCommand(string PathToDelete) : ISyncCommand
+public record DeleteSyncCommand(string PathToDelete, ILogger<DeleteSyncCommand> logger) : ISyncCommand
 {
+    private readonly ILogger<DeleteSyncCommand> _logger = logger;
+
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         Console.WriteLine("Deleting folder...");

@@ -77,6 +77,8 @@ try
     builder.Services.AddSingleton<ISyncCommandFactory, SyncCommandFactory>();
     builder.Services.AddSingleton(Channel.CreateUnbounded<SyncTask>());
     builder.Services.AddSingleton<ISyncTaskProducer, SyncTaskProducer>();
+    builder.Services.AddSingleton<ICommandExecutor, ConcurrentCommandExecutor>(
+        _ => new ConcurrentCommandExecutor(maxConcurrency: 4));
     builder.Services.AddSingleton<ISyncTaskConsumer, BatchSyncTaskConsumer>();
 
 

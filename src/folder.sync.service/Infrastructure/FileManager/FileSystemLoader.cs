@@ -12,7 +12,8 @@ public class FileSystemLoader : IFileLoader
         _logger = logger;
     }
 
-    public async IAsyncEnumerable<SyncEntry> LoadFilesAsync(string rootPath, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<SyncEntry> LoadFilesAsync(string rootPath,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         if (!Directory.Exists(rootPath))
             yield break;
@@ -40,7 +41,7 @@ public class FileSystemLoader : IFileLoader
                 yield return folderEntry;
 
             var files = Array.Empty<string>();
-            string[] subdirs = Array.Empty<string>();
+            var subdirs = Array.Empty<string>();
             try
             {
                 files = Directory.GetFiles(currentDir);
@@ -67,7 +68,7 @@ public class FileSystemLoader : IFileLoader
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("[File] {file} skipped: {ex.Message}",file, ex.Message);
+                    _logger.LogError("[File] {file} skipped: {ex.Message}", file, ex.Message);
                 }
 
                 if (fileEntry is not null)
