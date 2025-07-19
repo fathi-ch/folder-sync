@@ -12,7 +12,8 @@ public class FileSystemLoader : IFileLoader
         _logger = logger;
     }
 
-    public async IAsyncEnumerable<SyncEntry> LoadFilesAsync(string rootPath, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<SyncEntry> LoadFilesAsync(string rootPath,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         if (!Directory.Exists(rootPath))
             yield break;
@@ -29,7 +30,7 @@ public class FileSystemLoader : IFileLoader
             try
             {
                 var dirInfo = new DirectoryInfo(currentDir);
-                folderEntry = new FolderEntry(dirInfo.FullName, dirInfo.LastWriteTimeUtc);
+                folderEntry = new FolderEntry(dirInfo.FullName, 0, dirInfo.LastWriteTimeUtc);
             }
             catch (Exception ex)
             {
@@ -40,7 +41,7 @@ public class FileSystemLoader : IFileLoader
                 yield return folderEntry;
 
             var files = Array.Empty<string>();
-            string[] subdirs = Array.Empty<string>();
+            var subdirs = Array.Empty<string>();
             try
             {
                 files = Directory.GetFiles(currentDir);
@@ -67,7 +68,7 @@ public class FileSystemLoader : IFileLoader
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("[File] {file} skipped: {ex.Message}",file, ex.Message);
+                    _logger.LogError("[File] {file} skipped: {ex.Message}", file, ex.Message);
                 }
 
                 if (fileEntry is not null)
@@ -86,6 +87,15 @@ public class FileSystemLoader : IFileLoader
             using var sha256 = SHA256.Create();
             var hash = await sha256.ComputeHashAsync(stream, cancellationToken);
             return Convert.ToHexString(hash);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return string.Empty;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("[Hash] {Path} canceled unexpectedly.", path);
+            return string.Empty;
         }
         catch (Exception ex)
         {

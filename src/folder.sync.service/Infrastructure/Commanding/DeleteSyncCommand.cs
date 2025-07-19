@@ -1,12 +1,40 @@
+using folder.sync.service.Infrastructure.FileManager;
+using folder.sync.service.Infrastructure.Labeling;
+
 namespace folder.sync.service.Infrastructure.Commanding;
 
-public record DeleteSyncCommand(string PathToDelete) : ISyncCommand
+public class DeleteSyncCommand : ISyncCommand
 {
+    private readonly FileSystemOperationDispatcher _fileSystemOperationDispatcher;
+    private readonly ILogger<DeleteSyncCommand> _logger;
+    private readonly string _pathToDelete;
+    private readonly IBatchState _batchState;
+    private readonly SyncTask _task;
+
+    public DeleteSyncCommand(IBatchState batchState, SyncTask task, string pathToDelete,
+        ILogger<DeleteSyncCommand> logger, FileSystemOperationDispatcher fileSystemOperationDispatcher)
+    {
+        _pathToDelete = pathToDelete;
+        _logger = logger;
+        _fileSystemOperationDispatcher = fileSystemOperationDispatcher;
+        _batchState = batchState;
+        _task = task;
+    }
+
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        Console.WriteLine("Deleting folder...");
-        // if (File.Exists(PathToDelete)) File.Delete(PathToDelete);
-        // else if (Directory.Exists(PathToDelete)) Directory.Delete(PathToDelete, recursive: true);
-        // return Task.CompletedTask;
+        try
+        {
+            _logger.LogDebug("[CMD] Executing Delete: {Path}", _pathToDelete);
+            await _fileSystemOperationDispatcher.DispatchAsync(new DeleteFileSystemOperation(_pathToDelete), cancellationToken);
+            _batchState.MarkSuccess(_task);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Delete failed: {Path}", _pathToDelete);
+            _batchState.MarkFailure(_task, ex);
+        }
+
+        await Task.CompletedTask;
     }
 }

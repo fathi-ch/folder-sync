@@ -34,30 +34,28 @@ public class FolderSyncPipeline : IFolderSyncPipeline
 
     public async Task RunAsync(string sourcePath, string replicaPath, CancellationToken cancellationToken)
     {
+        var sourceFiles = _syncEntryFileLoader.LoadFilesAsync(sourcePath, cancellationToken);
+        var actualState = await FolderStateDeterminer.DetermineAsync(sourceFiles);
+        var oldState = await _syncFolderStateCache.GetAsync(StateFilePath);
 
-        var sourceFiles =  _syncEntryFileLoader.LoadFilesAsync(sourcePath, cancellationToken);
-        // var actualState = await FolderStateDeterminer.DetermineAsync(sourceFiles);
-        // var oldState = await _syncFolderStateCache.GetAsync(StateFilePath);
-
-        // if (oldState == null || !oldState.Equals(actualState))
-        // {
-            
+        if (oldState == null || !oldState.Equals(actualState))
+        {
             var replicaFiles = _syncEntryFileLoader.LoadFilesAsync(replicaPath, cancellationToken);
 
-            var task = _syncLabeler.ProcessAsync(sourcePath, sourceFiles, replicaPath, replicaFiles, cancellationToken);
+            var labeledSyncTasks =
+                _syncLabeler.ProcessAsync(sourcePath, sourceFiles, replicaPath, replicaFiles, cancellationToken);
 
-            await _syncTaskProducer.ProduceAsync(task, _taskQueueChannel, cancellationToken);
+            await _syncTaskProducer.ProduceAsync(labeledSyncTasks, _taskQueueChannel, cancellationToken);
 
             _ = _batchSyncTaskConsumer.StartAsync(_taskQueueChannel, cancellationToken);
 
+            await _syncFolderStateCache.SetAsync(StateFilePath, actualState);
             _logger.LogInformation("Loading completed.");
-            Task.Delay(TimeSpan.FromMicroseconds(2), cancellationToken);
-            //   await _syncFolderStateCache.SetAsync(sourcePath, actualState);
-            // }
-            // else
-            // {
-            //     _logger.LogInformation(" No changes detected.");
-            // }
+        }
+        else
+        {
+            _logger.LogInformation("No changes detected.");
+        }
     }
 
     public async Task StopAsync()

@@ -8,12 +8,3 @@ public interface ISyncLabeler
         string replicaPath,
         IAsyncEnumerable<SyncEntry> replicaFiles, CancellationToken cancellationToken);
 }
-
-public record SyncTask(SyncCommand Command, SyncEntry Entry);
-
-public enum SyncCommand
-{
-    Create,
-    Update,
-    Delete
-}
