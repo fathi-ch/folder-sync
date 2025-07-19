@@ -88,9 +88,13 @@ public class FileSystemLoader : IFileLoader
             var hash = await sha256.ComputeHashAsync(stream, cancellationToken);
             return Convert.ToHexString(hash);
         }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return string.Empty;
+        }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("[Hash] {Path} canceled due to shutdown.", path);
+            _logger.LogWarning("[Hash] {Path} canceled unexpectedly.", path);
             return string.Empty;
         }
         catch (Exception ex)

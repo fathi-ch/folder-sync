@@ -9,9 +9,8 @@ public class BatchState : IBatchState
 
     public void MarkSuccess(SyncTask task)
     {
-        
         _failures.Remove(task);
-        
+
         _successes.Add(task);
     }
 
@@ -23,11 +22,20 @@ public class BatchState : IBatchState
         _failures[task] = ex;
     }
 
-    public IReadOnlyList<SyncTask> GetFailedTasks() => _failures.Keys.ToList();
-    public void ClearFailures() => _failures.Clear();
+    public IReadOnlyList<SyncTask> GetFailedTasks()
+    {
+        return _failures.Keys.ToList();
+    }
+
+    public void ClearFailures()
+    {
+        _failures.Clear();
+    }
 
     public int SuccessCount => _successes.Count;
     public int FailedCount => _failures.Count;
     public IReadOnlyList<SyncTask> SuccessfulTasks => _successes.ToList();
-    public IReadOnlyList<(SyncTask Task, Exception Error)> FailedTasks => _failures.Select(kvp => (kvp.Key, kvp.Value)).ToList();
+
+    public IReadOnlyList<(SyncTask Task, Exception Error)> FailedTasks =>
+        _failures.Select(kvp => (kvp.Key, kvp.Value)).ToList();
 }

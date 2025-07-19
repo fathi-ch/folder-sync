@@ -104,7 +104,6 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
                             {
                                 // Do not remove from failure list; keep it for logging or metrics
                             }
-                           
                         });
 
                         await Task.WhenAll(retryTasks);

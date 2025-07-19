@@ -40,14 +40,15 @@ public class FolderSyncPipeline : IFolderSyncPipeline
 
         if (oldState == null || !oldState.Equals(actualState))
         {
-            var replicaFiles    = _syncEntryFileLoader.LoadFilesAsync(replicaPath, cancellationToken);
+            var replicaFiles = _syncEntryFileLoader.LoadFilesAsync(replicaPath, cancellationToken);
 
-            var labeledSyncTasks = _syncLabeler.ProcessAsync(sourcePath, sourceFiles, replicaPath, replicaFiles, cancellationToken);
+            var labeledSyncTasks =
+                _syncLabeler.ProcessAsync(sourcePath, sourceFiles, replicaPath, replicaFiles, cancellationToken);
 
             await _syncTaskProducer.ProduceAsync(labeledSyncTasks, _taskQueueChannel, cancellationToken);
 
             _ = _batchSyncTaskConsumer.StartAsync(_taskQueueChannel, cancellationToken);
-            
+
             await _syncFolderStateCache.SetAsync(StateFilePath, actualState);
             _logger.LogInformation("Loading completed.");
         }
