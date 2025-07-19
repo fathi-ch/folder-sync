@@ -54,7 +54,7 @@ public class FolderSyncPipeline : IFolderSyncPipeline
         }
         else
         {
-            _logger.LogInformation(" No changes detected.");
+            _logger.LogInformation("No changes detected.");
         }
     }
 

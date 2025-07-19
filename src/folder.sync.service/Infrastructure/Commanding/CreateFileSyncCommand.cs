@@ -28,32 +28,27 @@ public record CreateFileSyncCommand : ISyncCommand
     {
         try
         {
-            await _fileSystemOperationDispatcher.DispatchAsync(new CreateFileOperation(_source.Path, _replicaPath),
-                cancellationToken);
+            await _fileSystemOperationDispatcher.DispatchAsync(new CreateFileOperation(_source.Path, _replicaPath), cancellationToken);
             _batchState.MarkSuccess(_task);
         }
         catch (OperationCanceledException ex)
         {
-            _logger.LogWarning("File copy operation was canceled. Source: {Source}, Destination: {Destination}",
-                _source.Path, _replicaPath);
+            _logger.LogWarning("File copy operation was canceled. Source: {Source}, Destination: {Destination}", _source.Path, _replicaPath);
             _batchState.MarkFailure(_task, ex);
         }
         catch (UnauthorizedAccessException ex)
         {
-            _logger.LogError("Access denied during file copy. Source: {Source}, Destination: {Destination}",
-                _source.Path, _replicaPath);
+            _logger.LogError("Access denied during file copy. Source: {Source}, Destination: {Destination}", _source.Path, _replicaPath);
             _batchState.MarkFailure(_task, ex);
         }
         catch (IOException ex)
         {
-            _logger.LogError("I/O error during file copy. Source: {Source}, Destination: {Destination}", _source.Path,
-                _replicaPath);
+            _logger.LogError("I/O error during file copy. Source: {Source}, Destination: {Destination}", _source.Path, _replicaPath);
             _batchState.MarkFailure(_task, ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError("Unexpected error during file copy. Source: {Source}, Destination: {Destination}",
-                _source.Path, _replicaPath);
+            _logger.LogError("Unexpected error during file copy. Source: {Source}, Destination: {Destination}", _source.Path, _replicaPath);
             _batchState.MarkFailure(_task, ex);
         }
     }

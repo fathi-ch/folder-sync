@@ -25,7 +25,7 @@ public class DeleteSyncCommand : ISyncCommand
     {
         try
         {
-            _logger.LogInformation("Deleting: {Path}", _pathToDelete);
+            _logger.LogDebug("[CMD] Executing Delete: {Path}", _pathToDelete);
             await _fileSystemOperationDispatcher.DispatchAsync(new DeleteFileSystemOperation(_pathToDelete), cancellationToken);
             _batchState.MarkSuccess(_task);
         }

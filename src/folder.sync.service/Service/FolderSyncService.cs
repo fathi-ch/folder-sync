@@ -29,7 +29,7 @@ public class FolderSyncService : BackgroundService
         while (await timer.WaitForNextTickAsync(stoppingToken))
             try
             {
-                _logger.LogInformation("Initiating sync pull cycle (interval: {IntervalSeconds}s).", _intervalInSec);
+                _logger.LogInformation("Initiating sync replication cycle (interval: {IntervalSeconds}s).", _intervalInSec);
                 await _folderSyncPipeline.RunAsync(_sourcePath, _replicaPath, stoppingToken);
             }
             catch (OperationCanceledException ex) when (stoppingToken.IsCancellationRequested)

@@ -17,13 +17,10 @@ public class CreateFileHandler : IFileOperationHandler<CreateFileOperation>
         if (!Directory.Exists(destDir))
             Directory.CreateDirectory(destDir!);
 
-        await using var src = new FileStream(operation.SourcePath, FileMode.Open, FileAccess.Read, FileShare.Read,
-            81920, true);
-        await using var dst = new FileStream(operation.DestinationPath, FileMode.Create, FileAccess.Write,
-            FileShare.None, 81920, true);
+        await using var src = new FileStream(operation.SourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
+        await using var dst = new FileStream(operation.DestinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
 
-        _logger.LogInformation("Copying file from {Source} to {Destination} of Size: {Size} bytes",
-            operation.SourcePath, operation.DestinationPath, src.Length);
+        _logger.LogInformation("Copying file from {Source} to {Destination} of Size: {Size} bytes", operation.SourcePath, operation.DestinationPath, src.Length);
 
         var stopwatch = Stopwatch.StartNew();
         await src.CopyToAsync(dst, cancellationToken);

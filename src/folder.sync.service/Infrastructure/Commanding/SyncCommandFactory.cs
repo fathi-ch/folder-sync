@@ -25,13 +25,9 @@ public class SyncCommandFactory : ISyncCommandFactory
 
         return task.Command switch
         {
-            SyncCommand.Create when task.Entry is FileEntry f => new CreateFileSyncCommand(_batchState, task,
-                f with { Path = fullSourcePath }, fullDestPath, _loggerFactory.CreateLogger<CreateFileSyncCommand>(),
-                _fileSystemOperationDispatcher),
-            SyncCommand.Update when task.Entry is FileEntry f => new UpdateFileSyncCommand(_batchState, task,
-                f with { Path = fullSourcePath }, fullDestPath, _loggerFactory.CreateLogger<UpdateFileSyncCommand>(),  _fileSystemOperationDispatcher),
-            SyncCommand.Create when task.Entry is FolderEntry => new CreateFolderSyncCommand(_batchState, task,
-                fullDestPath, _loggerFactory.CreateLogger<CreateFolderSyncCommand>(), _fileSystemOperationDispatcher),
+            SyncCommand.Create when task.Entry is FileEntry f => new CreateFileSyncCommand(_batchState, task, f with { Path = fullSourcePath }, fullDestPath, _loggerFactory.CreateLogger<CreateFileSyncCommand>(), _fileSystemOperationDispatcher),
+            SyncCommand.Update when task.Entry is FileEntry f => new UpdateFileSyncCommand(_batchState, task, f with { Path = fullSourcePath }, fullDestPath, _loggerFactory.CreateLogger<UpdateFileSyncCommand>(),  _fileSystemOperationDispatcher),
+            SyncCommand.Create when task.Entry is FolderEntry => new CreateFolderSyncCommand(_batchState, task, fullDestPath, _loggerFactory.CreateLogger<CreateFolderSyncCommand>(), _fileSystemOperationDispatcher),
             SyncCommand.Delete => new DeleteSyncCommand(_batchState, task, fullDestPath, _loggerFactory.CreateLogger<DeleteSyncCommand>(),_fileSystemOperationDispatcher),
 
             _ => throw new InvalidOperationException($"Unhandled task: {task.Command} for {task.Entry.Path}")
