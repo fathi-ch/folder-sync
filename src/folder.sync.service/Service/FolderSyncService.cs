@@ -32,6 +32,10 @@ public class FolderSyncService : BackgroundService
                 _logger.LogInformation("Initiating sync pull cycle (interval: {IntervalSeconds}s).", _intervalInSec);
                 await _folderSyncPipeline.RunAsync(_sourcePath, _replicaPath, stoppingToken);
             }
+            catch (OperationCanceledException ex) when (stoppingToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("Sync operation was canceled gracefully.");
+            }
             catch (Exception ex)
             {
                 _logger.LogError("Error: {Type} | Msg: {Message} | Stack: {Stack}",

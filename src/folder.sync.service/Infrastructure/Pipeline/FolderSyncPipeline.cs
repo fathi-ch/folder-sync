@@ -47,10 +47,9 @@ public class FolderSyncPipeline : IFolderSyncPipeline
             await _syncTaskProducer.ProduceAsync(labeledSyncTasks, _taskQueueChannel, cancellationToken);
 
             _ = _batchSyncTaskConsumer.StartAsync(_taskQueueChannel, cancellationToken);
-
+            
+            await _syncFolderStateCache.SetAsync(StateFilePath, actualState);
             _logger.LogInformation("Loading completed.");
-
-            await _syncFolderStateCache.SetAsync(sourcePath, actualState);
         }
         else
         {

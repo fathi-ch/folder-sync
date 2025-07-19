@@ -9,10 +9,14 @@ public record CreateFileSyncCommand : ISyncCommand
     private readonly ILogger<CreateFileSyncCommand> _logger;
     private readonly SyncEntry _source;
     private readonly string _replicaPath;
+    private readonly IBatchState _batchState;
+    private readonly SyncTask _task;
 
-    public CreateFileSyncCommand(SyncEntry source, string replicaPath, ILogger<CreateFileSyncCommand> logger)
+    public CreateFileSyncCommand(IBatchState batchState, SyncTask task,SyncEntry source, string replicaPath, ILogger<CreateFileSyncCommand> logger)
     {
         _logger = logger;
+        _batchState = batchState;
+        _task = task;
         _source = source;
         _replicaPath = replicaPath;
     }
@@ -36,7 +40,7 @@ public record CreateFileSyncCommand : ISyncCommand
             var stopwatch = Stopwatch.StartNew();
             await src.CopyToAsync(dst, cancellationToken);
             stopwatch.Stop();
-
+             _batchState.MarkSuccess(_task);   
             var speed = src.Length / stopwatch.Elapsed.TotalSeconds;
             _logger.LogDebug("Copy completed in {Duration}ms with throughput: {Speed:N0} bytes/sec", stopwatch.ElapsedMilliseconds, speed);
                  
@@ -44,18 +48,22 @@ public record CreateFileSyncCommand : ISyncCommand
         catch (OperationCanceledException ex)
         {
             _logger.LogWarning("File copy operation was canceled. Source: {Source}, Destination: {Destination}", _source.Path, _replicaPath);
+            _batchState.MarkFailure(_task, ex);
         }
         catch (UnauthorizedAccessException ex)
         {
             _logger.LogError("Access denied during file copy. Source: {Source}, Destination: {Destination}", _source.Path, _replicaPath);
+            _batchState.MarkFailure(_task, ex);
         }
         catch (IOException ex)
         {
             _logger.LogError("I/O error during file copy. Source: {Source}, Destination: {Destination}", _source.Path, _replicaPath);
+            _batchState.MarkFailure(_task, ex);
         }
         catch (Exception ex)
         {
             _logger.LogError("Unexpected error during file copy. Source: {Source}, Destination: {Destination}", _source.Path, _replicaPath);
+            _batchState.MarkFailure(_task, ex);
         }
     }
 }

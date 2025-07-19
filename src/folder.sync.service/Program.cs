@@ -16,6 +16,14 @@ using folder.sync.service.Service;
 
 var builder = Host.CreateApplicationBuilder();
 
+builder.Services.Configure<HostOptions>(opts =>
+{
+    opts.ShutdownTimeout = TimeSpan.FromSeconds(10);
+    opts.ServicesStartConcurrently = true;
+    opts.ServicesStopConcurrently = true;
+
+});
+
 builder.Configuration
     .AddJsonFile("appsetings.json", true, true)
     .AddCommandLine(args);

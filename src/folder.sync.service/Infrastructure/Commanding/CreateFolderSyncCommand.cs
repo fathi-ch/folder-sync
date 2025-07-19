@@ -6,11 +6,15 @@ public class CreateFolderSyncCommand : ISyncCommand
 {
     private readonly string _folderPath;
     private readonly ILogger<CreateFolderSyncCommand> _logger;
+    private readonly IBatchState _batchState;
+    private readonly SyncTask _task;
 
-    public CreateFolderSyncCommand( string folderPath, ILogger<CreateFolderSyncCommand> logger)
+    public CreateFolderSyncCommand(IBatchState batchState, SyncTask task, string folderPath, ILogger<CreateFolderSyncCommand> logger)
     {
         _folderPath = folderPath ?? throw new ArgumentNullException(nameof(folderPath));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _batchState = batchState;
+        _task = task;
     }
 
     public Task ExecuteAsync( CancellationToken cancellationToken)
@@ -30,7 +34,9 @@ public class CreateFolderSyncCommand : ISyncCommand
         }
         catch (Exception ex)
         {
+            var message = $"Path not found during delete: {_folderPath}";
             _logger.LogWarning(ex, "Failed to create folder: {FolderPath}", _folderPath);
+            _batchState.MarkFailure(_task, new FileNotFoundException(message));
         }
 
         return Task.CompletedTask;

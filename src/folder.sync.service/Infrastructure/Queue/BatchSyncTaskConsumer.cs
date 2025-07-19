@@ -83,6 +83,7 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
 
                     var retryCount = 0;
                     const int maxRetries = 2;
+                    const int delayMs = 500;
                     while (_batchState.FailedCount > 0 && retryCount < maxRetries)
                     {
                         retryCount++;
@@ -94,10 +95,16 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
                                 await _executor.ExecuteAsync(retryCommand, cancellationToken);
                                 _batchState.MarkSuccess(failedTask);
                             }
+                            catch (IOException ex) when (retryCount < maxRetries - 1)
+                            {
+                                _logger.LogWarning("File locked, retrying in {Delay}ms: {Path}", delayMs, _replicaPath);
+                                await Task.Delay(delayMs, cancellationToken);
+                            }
                             catch (Exception ex)
                             {
                                 // Do not remove from failure list; keep it for logging or metrics
                             }
+                           
                         });
 
                         await Task.WhenAll(retryTasks);

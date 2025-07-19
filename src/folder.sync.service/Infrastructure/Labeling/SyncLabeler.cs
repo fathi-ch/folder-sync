@@ -109,36 +109,36 @@ public class SyncLabeler : ISyncLabeler
                 }
             }
 
-        // foreach (var entry in destMap
-        //              .Where(kvp => !sourceMap.ContainsKey(kvp.Key))
-        //              .OrderByDescending(kvp => kvp.Value.Path.Count(c => c == Path.DirectorySeparatorChar)))
-        // {
-        //     _logger.LogDebug("[DELETE] {Path}", entry.Value.Path);
-        //     yield return new SyncTask(SyncCommand.Delete, entry.Value, Path.Combine(sourcePath, entry.Value.Path));
-        // }
-         var deletes = destMap
-             .Where(kvp => !sourceMap.ContainsKey(kvp.Key))
-             .OrderBy(kvp => kvp.Key.Count(c => c == Path.DirectorySeparatorChar)) // Shortest path first
-             .Select(kvp => kvp.Value)
-             .ToList();
-        
-         var scheduled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        
-         foreach (var entry in deletes)
-         {
-             bool isChildOfScheduled = scheduled.Any(p =>
-                 entry.Path.StartsWith(p + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
-        
-             if (isChildOfScheduled)
-             {
-                 _logger.LogDebug("[SKIPPED DELETE] {Path} (parent already scheduled)", entry.Path);
-                 continue;
-             }
-        
-             scheduled.Add(entry.Path);
-             _logger.LogDebug("[DELETE] {Path}", entry.Path);
-             yield return new SyncTask(SyncCommand.Delete, entry, Path.Combine(sourcePath, entry.Path));
-       }
+        foreach (var entry in destMap
+                     .Where(kvp => !sourceMap.ContainsKey(kvp.Key))
+                     .OrderByDescending(kvp => kvp.Value.Path.Count(c => c == Path.DirectorySeparatorChar)))
+        {
+            _logger.LogDebug("[DELETE] {Path}", entry.Value.Path);
+            yield return new SyncTask(SyncCommand.Delete, entry.Value, Path.Combine(sourcePath, entry.Value.Path));
+        }
+         // var deletes = destMap
+         //     .Where(kvp => !sourceMap.ContainsKey(kvp.Key))
+         //     .OrderBy(kvp => kvp.Key.Count(c => c == Path.DirectorySeparatorChar)) // Shortest path first
+         //     .Select(kvp => kvp.Value)
+         //     .ToList();
+         //
+         // var scheduled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+         //
+         // foreach (var entry in deletes)
+         // {
+         //     bool isChildOfScheduled = scheduled.Any(p =>
+         //         entry.Path.StartsWith(p + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
+         //
+         //     if (isChildOfScheduled)
+         //     {
+         //         _logger.LogDebug("[SKIPPED DELETE] {Path} (parent already scheduled)", entry.Path);
+         //         continue;
+         //     }
+         //
+         //     scheduled.Add(entry.Path);
+         //     _logger.LogDebug("[DELETE] {Path}", entry.Path);
+         //     yield return new SyncTask(SyncCommand.Delete, entry, Path.Combine(sourcePath, entry.Path));
+      // }
 
         
     }
