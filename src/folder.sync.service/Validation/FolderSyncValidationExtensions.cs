@@ -35,10 +35,7 @@ public static class FolderSyncValidationExtensions
             if (mustExist && !Directory.Exists(fullPath))
                 throw new DirectoryNotFoundException($"{label} directory does not exist: {fullPath}");
 
-            if (!mustExist && !Directory.Exists(fullPath))
-            {
-                Directory.CreateDirectory(fullPath);
-            }
+            if (!mustExist && !Directory.Exists(fullPath)) Directory.CreateDirectory(fullPath);
         }
         catch (Exception ex)
         {
@@ -46,6 +43,7 @@ public static class FolderSyncValidationExtensions
             Environment.Exit(1);
         }
     }
+
     private static void ValidateFilePath(this FolderSyncServiceConfig _, string label, string filePath)
     {
         try
@@ -59,10 +57,7 @@ public static class FolderSyncValidationExtensions
             if (string.IsNullOrWhiteSpace(dir))
                 throw new ArgumentException("Invalid directory from path");
 
-            if (!Directory.Exists(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
         }
         catch (Exception ex)
         {
@@ -70,5 +65,4 @@ public static class FolderSyncValidationExtensions
             Environment.Exit(1);
         }
     }
-
 }
