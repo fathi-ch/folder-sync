@@ -1,7 +1,6 @@
 using System.Threading.Channels;
 using Serilog;
 using CommandLine;
-using CommandLine.Text;
 using folder.sync.service.Logging;
 using folder.sync.service.Validation;
 using folder.sync.service.Configuration;
@@ -14,6 +13,7 @@ using folder.sync.service.Infrastructure.Pipeline;
 using folder.sync.service.Infrastructure.Queue;
 using folder.sync.service.Infrastructure.State;
 using folder.sync.service.Service;
+using folder.sync.service.Common;
 
 var builder = Host.CreateApplicationBuilder();
 
@@ -42,22 +42,7 @@ try
     if (args.Length > 0)
     {
         var parserResult = Parser.Default.ParseArguments<FolderSyncServiceConfig>(args);
-
-        parserResult
-            .WithParsed(options =>
-            {
-                if (options.IntervalInSec < 0)
-                {
-                    Console.WriteLine(" Invalid interval. Must be greater than 0.\n");
-                    Console.WriteLine(HelpText.AutoBuild(parserResult, _ => _, _ => _).ToString());
-                    Environment.Exit(1);
-                }
-                Console.WriteLine($"Running sync: {options.SourcePath} -> {options.ReplicaPath} every {options.IntervalInSec}s");
-            })
-            .WithNotParsed(errors => {
-                Environment.Exit(1);
-            });
-        syncOptions = parserResult.Value;
+        syncOptions = parserResult.ExtractValidOptions();
     }
     else
     {
@@ -68,19 +53,19 @@ try
     }
 
     syncOptions.Validate();
-    
-    Log.Logger = new LoggerConfiguration()
-    .Enrich.With<ShortSourceContextEnricher>()
-    .ReadFrom.Configuration(builder.Configuration)
-    .WriteTo.File(
-        path:syncOptions.LogPath,
-        rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 14,
-        outputTemplate:  "[{Timestamp:HH:mm:ss} {Level:u3}] {ShortSourceContext,-25} {Message:lj}{NewLine}{Exception}"
-        )
-    .CreateLogger();
 
-    builder.Logging.AddSerilog(Log.Logger, dispose: true);
+    Log.Logger = new LoggerConfiguration()
+        .Enrich.With<ShortSourceContextEnricher>()
+        .ReadFrom.Configuration(builder.Configuration)
+        .WriteTo.File(
+            syncOptions.LogPath,
+            rollingInterval: RollingInterval.Day,
+            retainedFileCountLimit: 14,
+            outputTemplate: AppConstants.SerilogTemplateOutPut
+        )
+        .CreateLogger();
+
+    builder.Logging.AddSerilog(Log.Logger, true);
     builder.Services.AddSingleton(syncOptions);
     builder.Services.AddHostedService<FolderSyncService>();
     builder.Services.AddSingleton<IFolderSyncPipeline, FolderSyncPipeline>();
@@ -102,7 +87,6 @@ try
     builder.Services.AddSingleton<IBatchState, BatchState>();
     builder.Services.AddSingleton<ISyncTaskConsumer, BatchSyncTaskConsumer>();
 
-
     var app = builder.Build();
     var log = app.Services.GetRequiredService<ILogger<Program>>();
     log.LogInformation("Service startup complete");
@@ -110,5 +94,5 @@ try
 }
 catch (Exception ex)
 {
-   Log.Logger.Fatal(ex, "Fatal error occurred during startup or runtime");
+    Log.Logger.Fatal(ex, "Fatal error occurred during startup or runtime");
 }
