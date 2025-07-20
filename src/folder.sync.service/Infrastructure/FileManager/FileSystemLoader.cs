@@ -9,7 +9,7 @@ namespace folder.sync.service.Infrastructure.FileManager;
 public class FileSystemLoader : IFileLoader
 {
     private readonly ILogger<FileSystemLoader> _logger;
-    private readonly ConcurrentDictionary<string, (long Length, DateTime LastWriteUtc)> _fileCache = new();
+    private readonly Dictionary<string, (long Length, DateTime LastWriteTimeUtc, string Hash)> _fileCache = new();
 
     public FileSystemLoader(ILogger<FileSystemLoader> logger)
     {
@@ -86,12 +86,17 @@ public class FileSystemLoader : IFileLoader
                             var fileKey = fi.FullName;
                             var currentMeta = (fi.Length, fi.LastWriteTimeUtc);
 
-                            var hash = string.Empty; //await ComputeFileHashWithMemoryMapAsync(fi.FullName, ct);
+                            string hash;
 
-                            var isUnchanged = _fileCache.TryGetValue(fileKey, out var previousMeta) && previousMeta == currentMeta;
-
-                            if (!isUnchanged)
-                                _fileCache[fileKey] = currentMeta;
+                            if (_fileCache.TryGetValue(fileKey, out var cached) && cached.Length == fi.Length && cached.LastWriteTimeUtc == fi.LastWriteTimeUtc)
+                            {
+                                hash = cached.Hash; // reuse
+                            }
+                            else
+                            {
+                                hash = await ComputeFileHashWithMemoryMapAsync(fi.FullName, ct);
+                                _fileCache[fileKey] = (fi.Length, fi.LastWriteTimeUtc, hash);
+                            }
 
                             var entry = new FileEntry(fi.FullName, fi.Length, fi.LastWriteTimeUtc, hash);
                             await channel.Writer.WriteAsync(entry, ct);
@@ -101,8 +106,6 @@ public class FileSystemLoader : IFileLoader
                             _logger.LogWarning("[File] {File} skipped: {Message}", file, ex.Message);
                         }
                     });
-
-
                 }
             }
             catch (OperationCanceledException)
@@ -119,13 +122,13 @@ public class FileSystemLoader : IFileLoader
 
         await producer;
     }
-    
-    public async Task<string> ComputeFileHashWithMemoryMapAsync(string filePath, CancellationToken cancellationToken)
+
+    private async Task<string> ComputeFileHashWithMemoryMapAsync(string filePath, CancellationToken cancellationToken)
     {
         try
         {
             using var mmf = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open, null, 0, MemoryMappedFileAccess.Read);
-            using var accessor = mmf.CreateViewStream(0, 0, MemoryMappedFileAccess.Read);
+            await using var accessor = mmf.CreateViewStream(0, 0, MemoryMappedFileAccess.Read);
             using var sha256 = SHA256.Create();
 
             var hash = await sha256.ComputeHashAsync(accessor, cancellationToken);
