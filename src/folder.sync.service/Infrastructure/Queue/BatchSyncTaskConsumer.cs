@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Threading.Channels;
+using folder.sync.service.Common;
 using folder.sync.service.Configuration;
 using folder.sync.service.Infrastructure.Commanding;
 using folder.sync.service.Infrastructure.Labeling;
@@ -16,7 +17,7 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
     private Task? _worker;
 
     // Configurable
-    private const int BatchSize = 50;
+    private const int BatchSize = AppConstants.MaxBatchSize;
     private static readonly TimeSpan FlushInterval = TimeSpan.FromMilliseconds(50);
 
     public BatchSyncTaskConsumer(ISyncCommandFactory syncCommandFactory,
@@ -39,91 +40,72 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
     private async Task ConsumeBatchesAsync(Channel<SyncTask> reader, CancellationToken cancellationToken)
     {
         var buffer = new List<SyncTask>();
-        var flushTimer = new PeriodicTimer(FlushInterval);
-
+        using var flushTimer = new PeriodicTimer(FlushInterval);
 
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                // Read all available items or until batch size is reached
-                while (reader.Reader.TryRead(out var task))
+                // Collect items until BatchSize or timer elapses
+                while (buffer.Count < BatchSize &&
+                       reader.Reader.TryRead(out var task))
                 {
                     buffer.Add(task);
-
-                    if (buffer.Count >= BatchSize)
-                        break;
                 }
 
-
-                // If buffer has items and either the batch size is met or flush interval elapsed
-                if (buffer.Count >= BatchSize ||
-                    (buffer.Count > 0 && await flushTimer.WaitForNextTickAsync(cancellationToken)))
+                // Wait only if we haven't filled the batch
+                if (buffer.Count < BatchSize)
                 {
-                    var sw = Stopwatch.StartNew();
-
-
-                    var tasks = buffer.Select(async syncTask =>
-                    {
-                        var command = _syncCommandFactory.CreateFor(syncTask, _replicaPath);
-                        try
-                        {
-                            await _executor.ExecuteAsync(command, cancellationToken);
-                            _batchState.MarkSuccess(syncTask);
-                        }
-                        catch (Exception ex)
-                        {
-                            _batchState.MarkFailure(syncTask, ex);
-                            _logger.LogWarning(ex, "Sync task failed for {Path}", syncTask.Entry.Path);
-                        }
-                    });
-
-                    await Task.WhenAll(tasks);
-                    sw.Stop();
-
-                    var retryCount = 0;
-                    const int maxRetries = 2;
-                    const int delayMs = 500;
-                    while (_batchState.FailedCount > 0 && retryCount < maxRetries)
-                    {
-                        retryCount++;
-                        var retryTasks = _batchState.GetFailedTasks().Select(async failedTask =>
-                        {
-                            var retryCommand = _syncCommandFactory.CreateFor(failedTask, _replicaPath);
-                            try
-                            {
-                                await _executor.ExecuteAsync(retryCommand, cancellationToken);
-                                _batchState.MarkSuccess(failedTask);
-                            }
-                            catch (IOException ex) when (retryCount < maxRetries - 1)
-                            {
-                                _logger.LogWarning("File locked, retrying in {Delay}ms: {Path}", delayMs, _replicaPath);
-                                await Task.Delay(delayMs, cancellationToken);
-                            }
-                            catch (Exception ex)
-                            {
-                                // Do not remove from failure list; keep it for logging or metrics
-                            }
-                        });
-
-                        await Task.WhenAll(retryTasks);
-                    }
-
-                    _logger.LogInformation(
-                        "Batch processed {Count} items in {ElapsedMs}ms. Success: {Ok}, Failed: {Fail}",
-                        buffer.Count, sw.ElapsedMilliseconds, _batchState.SuccessCount, _batchState.FailedCount);
-
-                    buffer.Clear();
+                    await flushTimer.WaitForNextTickAsync(cancellationToken);
                 }
+
+                if (buffer.Count == 0)
+                    continue;
+
+                var sw = Stopwatch.StartNew();
+
+                // Execute all tasks concurrently
+                var executionTasks = buffer.Select(task => ExecuteWithRetryAsync(task, cancellationToken));
+                await Task.WhenAll(executionTasks);
+
+                sw.Stop();
+                _logger.LogInformation(
+                    "Batch processed {Count} in {ElapsedMs}ms. Success={Success} Failed={Fail}",
+                    buffer.Count, sw.ElapsedMilliseconds, _batchState.SuccessCount, _batchState.FailedCount);
+
+                buffer.Clear();
             }
         }
-        catch (ChannelClosedException)
+        catch (ChannelClosedException) { /* graceful exit */ }
+    }
+
+    private async Task ExecuteWithRetryAsync(SyncTask task, CancellationToken cancellationToken)
+    {
+        const int maxRetries = 2;
+        const int delayMs = 500;
+
+        for (int attempt = 0; attempt <= maxRetries; attempt++)
         {
-            // gracefully stop
-        }
-        finally
-        {
-            flushTimer.Dispose();
+            var command = _syncCommandFactory.CreateFor(task, _replicaPath);
+
+            try
+            {
+                await _executor.ExecuteAsync(command, cancellationToken);
+                _batchState.MarkSuccess(task);
+                return;
+            }
+            catch (IOException ex) when (attempt < maxRetries)
+            {
+                _logger.LogWarning("File locked. Retrying in {Delay}ms: {Path}", delayMs, task.Entry.Path);
+                await Task.Delay(delayMs, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _batchState.MarkFailure(task, ex);
+                _logger.LogWarning(ex, "Sync task failed permanently: {Path}", task.Entry.Path);
+                return;
+            }
         }
     }
+
 }

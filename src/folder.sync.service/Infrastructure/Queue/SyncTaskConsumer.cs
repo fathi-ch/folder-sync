@@ -21,7 +21,8 @@ public class SyncTaskConsumer : ISyncTaskConsumer
     public Task StartAsync(Channel<SyncTask> reader, CancellationToken cancellationToken)
     {
         // Ensure only one worker is started
-        _worker ??= Task.Run(() => ConsumeLoopAsync(reader, cancellationToken), cancellationToken);
+        //_worker ??= Task.Run(() => ConsumeLoopAsync(reader, cancellationToken), cancellationToken);
+        _worker ??= ConsumeLoopAsync(reader, cancellationToken);
         return Task.CompletedTask;
     }
 

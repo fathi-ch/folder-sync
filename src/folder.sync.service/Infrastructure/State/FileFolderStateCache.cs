@@ -1,21 +1,19 @@
 using System.Text.Json;
+using folder.sync.service.Common;
 
 namespace folder.sync.service.Infrastructure.State;
 
 public class FileFolderStateCache : IFolderStateCache
 {
     private readonly ILogger<FileFolderStateCache> _logger;
-    private readonly string _filePath = ".cache/folder_state.json";
-
+    private readonly string _filePath = AppConstants.StateFilePath;
+    
     public FileFolderStateCache(ILogger<FileFolderStateCache> logger)
     {
         _logger = logger;
-        var dir = Path.GetDirectoryName(_filePath);
-        if (!Directory.Exists(dir))
-            Directory.CreateDirectory(dir!);
     }
 
-    public async Task<FolderState?> GetAsync(string folderPath)
+    public async Task<FolderState?> GetAsync()
     {
         if (!File.Exists(_filePath))
             return null;
@@ -32,10 +30,14 @@ public class FileFolderStateCache : IFolderStateCache
         }
     }
 
-    public async Task SetAsync(string folderPath, FolderState state)
+    public async Task SetAsync(FolderState state)
     {
         try
         {
+            var dir = Path.GetDirectoryName(_filePath);
+            if (!Directory.Exists(dir))
+                Directory.CreateDirectory(dir!);
+            
             var json = JsonSerializer.Serialize(state, new JsonSerializerOptions
             {
                 WriteIndented = true
@@ -47,5 +49,23 @@ public class FileFolderStateCache : IFolderStateCache
         {
             _logger.LogError("[Cache] Failed to  write state:{ex.Message}", ex.Message);
         }
+    }
+
+    public async Task FlushAsync()
+    {
+        try
+        {
+            if (File.Exists(_filePath))
+            {
+                File.Delete(_filePath);
+                _logger.LogInformation("Flushing the state: {Path}", _filePath);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Something went wrong during flushing the state: {path}", _filePath);
+        }
+
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 }

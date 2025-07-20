@@ -103,7 +103,7 @@ public class SyncLabeler : ISyncLabeler
                 }
                 else if (dstEntry is FileEntry dstFile)
                 {
-                    if (srcFile.Hash != dstFile.Hash || srcFile.LastModified > dstFile.LastModified)
+                    if (!string.Equals(srcFile.Hash, dstFile.Hash, StringComparison.OrdinalIgnoreCase))
                     {
                         _logger.LogDebug("[UPDATE] {Path}", srcFile.Path);
                         yield return new SyncTask(SyncCommand.Update, srcFile, Path.Combine(sourcePath, srcFile.Path));
@@ -118,29 +118,6 @@ public class SyncLabeler : ISyncLabeler
             _logger.LogDebug("[DELETE] {Path}", entry.Value.Path);
             yield return new SyncTask(SyncCommand.Delete, entry.Value, Path.Combine(sourcePath, entry.Value.Path));
         }
-        // var deletes = destMap
-        //     .Where(kvp => !sourceMap.ContainsKey(kvp.Key))
-        //     .OrderBy(kvp => kvp.Key.Count(c => c == Path.DirectorySeparatorChar)) // Shortest path first
-        //     .Select(kvp => kvp.Value)
-        //     .ToList();
-        //
-        // var scheduled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        //
-        // foreach (var entry in deletes)
-        // {
-        //     bool isChildOfScheduled = scheduled.Any(p =>
-        //         entry.Path.StartsWith(p + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
-        //
-        //     if (isChildOfScheduled)
-        //     {
-        //         _logger.LogDebug("[SKIPPED DELETE] {Path} (parent already scheduled)", entry.Path);
-        //         continue;
-        //     }
-        //
-        //     scheduled.Add(entry.Path);
-        //     _logger.LogDebug("[DELETE] {Path}", entry.Path);
-        //     yield return new SyncTask(SyncCommand.Delete, entry, Path.Combine(sourcePath, entry.Path));
-        // }
     }
 
     private string GetRelativePath(string fullPath, string rootPath)

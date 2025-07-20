@@ -1,5 +1,4 @@
 using folder.sync.service.Configuration;
-using folder.sync.service.Infrastructure;
 using folder.sync.service.Infrastructure.Pipeline;
 
 namespace folder.sync.service.Service;
@@ -25,11 +24,11 @@ public class FolderSyncService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var timer = new PeriodicTimer(TimeSpan.FromSeconds(_intervalInSec));
-
+        
         while (await timer.WaitForNextTickAsync(stoppingToken))
             try
             {
-                _logger.LogInformation("Initiating sync replication cycle (interval: {IntervalSeconds}s).", _intervalInSec);
+                _logger.LogInformation("Initiating periodical replication cycle every: {IntervalSeconds}s From {Source} To {Replica}.", _intervalInSec, _sourcePath, _replicaPath);
                 await _folderSyncPipeline.RunAsync(_sourcePath, _replicaPath, stoppingToken);
             }
             catch (OperationCanceledException ex) when (stoppingToken.IsCancellationRequested)

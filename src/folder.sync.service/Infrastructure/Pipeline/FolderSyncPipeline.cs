@@ -16,9 +16,8 @@ public class FolderSyncPipeline : IFolderSyncPipeline
     private readonly ISyncTaskProducer _syncTaskProducer;
     private readonly Channel<SyncTask> _taskQueueChannel;
     private readonly ISyncTaskConsumer _batchSyncTaskConsumer;
-
-    private const string StateFilePath = ".cache/folder_state.json";
-
+    
+    
     public FolderSyncPipeline(ILogger<FolderSyncPipeline> logger, ISyncLabeler syncLabeler,
         IFolderStateCache syncFolderStateCache, Channel<SyncTask> taskQueueChannel, ISyncTaskProducer syncTaskProducer,
         ISyncTaskConsumer batchSyncTaskConsumer, IFileLoader syncEntryFileLoader)
@@ -34,14 +33,13 @@ public class FolderSyncPipeline : IFolderSyncPipeline
 
     public async Task RunAsync(string sourcePath, string replicaPath, CancellationToken cancellationToken)
     {
-        var sourceFiles = _syncEntryFileLoader.LoadFilesAsync(sourcePath, cancellationToken);
+        var sourceFiles =  _syncEntryFileLoader.LoadFilesAsync(sourcePath, cancellationToken);
         var actualState = await FolderStateDeterminer.DetermineAsync(sourceFiles);
-        var oldState = await _syncFolderStateCache.GetAsync(StateFilePath);
+        var oldState = await _syncFolderStateCache.GetAsync();
 
         if (oldState == null || !oldState.Equals(actualState))
         {
             var replicaFiles = _syncEntryFileLoader.LoadFilesAsync(replicaPath, cancellationToken);
-
             var labeledSyncTasks =
                 _syncLabeler.ProcessAsync(sourcePath, sourceFiles, replicaPath, replicaFiles, cancellationToken);
 
@@ -49,11 +47,19 @@ public class FolderSyncPipeline : IFolderSyncPipeline
 
             _ = _batchSyncTaskConsumer.StartAsync(_taskQueueChannel, cancellationToken);
 
-            await _syncFolderStateCache.SetAsync(StateFilePath, actualState);
+            await _syncFolderStateCache.SetAsync(actualState);
             _logger.LogInformation("Loading completed.");
         }
         else
         {
+            var sourceCount = await sourceFiles.CountAsync(cancellationToken);
+            var replicaCount = await _syncEntryFileLoader.LoadFilesAsync(replicaPath, cancellationToken).CountAsync(cancellationToken);
+            if (sourceCount > replicaCount)
+            {
+                _logger.LogDebug("Folders are not in Sync, [COUNT] source: {sourceCount} vs replicas: {repCount}", sourceCount, replicaCount);
+                _syncFolderStateCache.FlushAsync();
+            }
+                    
             _logger.LogInformation("No changes detected.");
         }
     }
