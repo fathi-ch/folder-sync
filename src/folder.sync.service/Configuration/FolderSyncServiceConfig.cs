@@ -13,10 +13,10 @@ public class FolderSyncServiceConfig
 
     [Option('r', "ReplicaPath", Required = true, HelpText = "Replica folder path")]
     public string ReplicaPath { get; set; }
-    
+
     [Option('l', "LogPath", Required = true, HelpText = "Logs  path")]
-    public string LogPath { get; set; } 
-    
+    public string LogPath { get; set; }
+
     [Option('i', "IntervalInSec", Required = true, HelpText = "Interval in seconds must be greater than 0")]
     [Range(0, int.MaxValue, ErrorMessage = "Interval must be greater than 0")]
     public int IntervalInSec { get; set; } = 1;
