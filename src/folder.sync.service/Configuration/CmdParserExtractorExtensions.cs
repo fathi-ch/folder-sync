@@ -15,8 +15,6 @@ public static class CmdParserExtractorExtensions
                     Console.WriteLine(HelpText.AutoBuild(result, _ => _, _ => _));
                     Environment.Exit(1);
                 }
-
-                Console.WriteLine($"Running sync: {options.SourcePath} -> {options.ReplicaPath} every {options.IntervalInSec}s");
             })
             .WithNotParsed(errors =>
             {
