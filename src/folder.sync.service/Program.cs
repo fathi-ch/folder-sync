@@ -24,10 +24,6 @@ builder.Services.Configure<HostOptions>(opts =>
     opts.ServicesStopConcurrently = true;
 });
 
-builder.Configuration
-    .AddJsonFile("appsetings.json", true, true)
-    .AddCommandLine(args);
-
 builder.Logging.ClearProviders();
 
 Log.Logger = new LoggerConfiguration()
@@ -77,6 +73,7 @@ try
         _ => new ConcurrentCommandExecutor(4));
     builder.Services.AddSingleton<IBatchState, BatchState>();
     builder.Services.AddSingleton<ISyncTaskConsumer, BatchSyncTaskConsumer>();
+  //  builder.Services.AddSingleton<ISyncTaskConsumer, SyncTaskConsumer>();
 
     var app = builder.Build();
     var log = app.Services.GetRequiredService<ILogger<Program>>();
