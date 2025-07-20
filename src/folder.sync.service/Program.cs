@@ -31,8 +31,14 @@ builder.Configuration
 builder.Logging.ClearProviders();
 
 var logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
     .Enrich.With<ShortSourceContextEnricher>()
+    .ReadFrom.Configuration(builder.Configuration)
+    .WriteTo.File(
+        path: @"d:\logs\folder_sync_.log",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 14,
+        outputTemplate:  "[{Timestamp:HH:mm:ss} {Level:u3}] {ShortSourceContext,-25} {Message:lj}{NewLine}{Exception}"
+        )
     .CreateLogger();
 
 try
