@@ -54,16 +54,7 @@ try
 
     syncOptions.Validate();
 
-    Log.Logger = new LoggerConfiguration()
-        .Enrich.With<ShortSourceContextEnricher>()
-        .ReadFrom.Configuration(builder.Configuration)
-        .WriteTo.File(
-            syncOptions.LogPath,
-            rollingInterval: RollingInterval.Day,
-            retainedFileCountLimit: 14,
-            outputTemplate: AppConstants.SerilogTemplateOutPut
-        )
-        .CreateLogger();
+    LoggerSetup(builder, syncOptions);
 
     builder.Logging.AddSerilog(Log.Logger, true);
     builder.Services.AddSingleton(syncOptions);
@@ -95,4 +86,18 @@ try
 catch (Exception ex)
 {
     Log.Logger.Fatal(ex, "Fatal error occurred during startup or runtime");
+}
+
+void LoggerSetup(HostApplicationBuilder hostApplicationBuilder, FolderSyncServiceConfig folderSyncServiceConfig)
+{
+    Log.Logger = new LoggerConfiguration()
+        .Enrich.With<ShortSourceContextEnricher>()
+        .ReadFrom.Configuration(hostApplicationBuilder.Configuration)
+        .WriteTo.File(
+            folderSyncServiceConfig.LogPath,
+            rollingInterval: RollingInterval.Day,
+            retainedFileCountLimit: 14,
+            outputTemplate: AppConstants.SerilogTemplateOutPut
+        )
+        .CreateLogger();
 }
