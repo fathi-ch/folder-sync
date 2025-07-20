@@ -19,7 +19,7 @@ public class UpdateFileHandler : IFileOperationHandler<UpdateFileOperation>
         if (string.IsNullOrWhiteSpace(operation.SourcePath) || !File.Exists(operation.SourcePath))
         {
             _logger.LogWarning("Source file missing: {Path}", operation.SourcePath);
-           
+
             return;
         }
 
@@ -92,7 +92,6 @@ public class UpdateFileHandler : IFileOperationHandler<UpdateFileOperation>
             }
 
             _logger.LogInformation("Replica updated via delta (locked): {Path}", operation.DestinationPath);
-            
         }
         finally
         {
