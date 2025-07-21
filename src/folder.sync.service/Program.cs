@@ -14,6 +14,9 @@ using folder.sync.service.Infrastructure.Queue;
 using folder.sync.service.Infrastructure.State;
 using folder.sync.service.Service;
 using folder.sync.service.Common;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder();
 
@@ -71,6 +74,18 @@ try
     builder.Services.AddSingleton<IBatchState, BatchState>();
     builder.Services.AddSingleton<ISyncTaskConsumer, BatchSyncTaskConsumer>();
   //  builder.Services.AddSingleton<ISyncTaskConsumer, SyncTaskConsumer>(); //Useful for quick testing
+
+  builder.Services.AddOpenTelemetry()
+      .ConfigureResource(r => r.AddService(
+          serviceName: "FolderSyncService",
+          serviceNamespace: "SyncSystem",
+          serviceVersion: "1.0.0",
+          autoGenerateServiceInstanceId: true))
+      .WithTracing(b => b
+          .AddSource("FolderSync.BatchConsumer"))
+      .WithMetrics(b => b
+          .AddMeter("FolderSync.Metrics")
+          .AddRuntimeInstrumentation());
 
     var app = builder.Build();
     app.MapHealthChecks("/healthz");

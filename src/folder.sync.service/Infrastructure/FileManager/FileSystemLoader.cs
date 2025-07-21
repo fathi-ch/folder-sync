@@ -76,6 +76,8 @@ public class FileSystemLoader : IFileLoader
                         CancellationToken = cancellationToken
                     };
 
+                    var entriesBag = new ConcurrentBag<SyncEntry>();
+
                     await Parallel.ForEachAsync(files, parallelOptions, async (file, ct) =>
                     {
                         try
@@ -87,10 +89,10 @@ public class FileSystemLoader : IFileLoader
                             var currentMeta = (fi.Length, fi.LastWriteTimeUtc);
 
                             string hash;
-
-                            if (_fileCache.TryGetValue(fileKey, out var cached) && cached.Length == fi.Length && cached.LastWriteTimeUtc == fi.LastWriteTimeUtc)
+                            if (_fileCache.TryGetValue(fileKey, out var cached) &&
+                                cached.Length == fi.Length && cached.LastWriteTimeUtc == fi.LastWriteTimeUtc)
                             {
-                                hash = cached.Hash; // reuse
+                                hash = cached.Hash;
                             }
                             else
                             {
@@ -99,13 +101,18 @@ public class FileSystemLoader : IFileLoader
                             }
 
                             var entry = new FileEntry(fi.FullName, fi.Length, fi.LastWriteTimeUtc, hash);
-                            await channel.Writer.WriteAsync(entry, ct);
+                            entriesBag.Add(entry);
                         }
                         catch (Exception ex)
                         {
                             _logger.LogWarning("[File] {File} skipped: {Message}", file, ex.Message);
                         }
                     });
+
+                    foreach (var entry in entriesBag)
+                    {
+                        await channel.Writer.WriteAsync(entry, cancellationToken);
+                    }
                 }
             }
             catch (OperationCanceledException)

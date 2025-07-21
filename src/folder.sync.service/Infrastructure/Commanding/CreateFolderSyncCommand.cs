@@ -1,5 +1,6 @@
 using folder.sync.service.Infrastructure.FileManager;
 using folder.sync.service.Infrastructure.Labeling;
+using folder.sync.service.Infrastructure.Queue;
 
 namespace folder.sync.service.Infrastructure.Commanding;
 
@@ -25,8 +26,8 @@ public class CreateFolderSyncCommand : ISyncCommand
     {
         try
         {
-            await _fileSystemOperationDispatcher.DispatchAsync(new CreateFolderOperation(_folderPath),
-                cancellationToken);
+            await _fileSystemOperationDispatcher.DispatchAsync(new CreateFolderOperation(_folderPath), cancellationToken);
+            _batchState.MarkSuccess(_task);
         }
         catch (Exception ex)
         {
