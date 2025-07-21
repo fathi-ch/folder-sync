@@ -58,14 +58,10 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
                     continue;
 
                 var sw = Stopwatch.StartNew();
-
-                // Execute all tasks concurrently
-                var executionTasks = buffer.Select(task => ExecuteWithRetryAsync(task, cancellationToken));
-                await Task.WhenAll(executionTasks);
-
+                await ExecuteBatchWithRetriesAsync(buffer, cancellationToken);
                 sw.Stop();
-                _logger.LogInformation(
-                    "Batch processed {Count} in {ElapsedMs}ms. Success={Success} Failed={Fail}",
+                
+                _logger.LogInformation("Batch processed {Count} in {ElapsedMs}ms. Success={Success} Failed={Fail}",
                     buffer.Count, sw.ElapsedMilliseconds,
                     _batchState.GetSuccessCount(), _batchState.GetFailureCount());
 
@@ -77,40 +73,91 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
             /* graceful exit */
         }
     }
-
-    private async Task ExecuteWithRetryAsync(SyncTask task, CancellationToken cancellationToken)
+    
+    private async Task ExecuteTaskAsync(SyncTask task, CancellationToken cancellationToken)
     {
+        _logger.LogInformation("[Sync] Executing task for {Path}", task.Entry.Path);
+        var command = _syncCommandFactory.CreateFor(task, _replicaPath);
+
+        try
+        {
+            await _executor.ExecuteAsync(command, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[Sync] Initial execution failed for {Path}", task.Entry.Path);
+        }
+    }
+
+    private async Task ExecuteBatchWithRetriesAsync(List<SyncTask> tasks, CancellationToken cancellationToken)
+    {
+        const int maxAttempts = AppConstants.MaxAttempts;
         const int delayMs = 200;
 
-        for (var attempt = 1; attempt <= AppConstants.MaxAttempts; attempt++)
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            if (attempt < AppConstants.MaxAttempts)
-            {
-                _logger.LogInformation("[Retry]  Starting attempt {Attempt}/{MaxAttempts} for {Path}", attempt, AppConstants.MaxAttempts, task.Entry.Path);
-            }
-            else
-            {
-                _logger.LogError("[Retry] Last attempt reached {MaxAttempts} for {Path}", AppConstants.MaxAttempts, task.Entry.Path);
-            }
+            var toRun = (attempt == 1)
+                ? tasks
+                : _batchState.GetFailedTasks().ToList();
 
-            var command = _syncCommandFactory.CreateFor(task, _replicaPath);
+            if (toRun.Count == 0)
+                return;
 
-            try
-            {
-                await _executor.ExecuteAsync(command, cancellationToken);
-            }
-            catch
-            {
-                await Task.Delay(delayMs);
-            }
+            _logger.LogInformation("[Retry] Attempt {Attempt}/{Max} for {Count} failed tasks", attempt, maxAttempts, toRun.Count);
 
-            _batchState.FlushFailures(task);
+            var executions = toRun.Select(task => ExecuteTaskAsync(task, cancellationToken));
+            await Task.WhenAll(executions);
+
+            if (attempt < maxAttempts)
+                await Task.Delay(delayMs, cancellationToken);
         }
-
-        _logger.LogInformation(
-            "[Retry] Batch summary: Success={SuccessCount}, Failed={FailedCount}, Retried={RetriedCount}",
-            _batchState.GetSuccessCount(),
-            _batchState.GetFailureCount(),
-            _batchState.GetRetryCount());
     }
+
+
+
+    // private async Task ExecuteWithRetryAsync(SyncTask task, CancellationToken cancellationToken)
+    // {
+    //     int maxAttempts = AppConstants.MaxAttempts;
+    //     const int delayMs = 200;
+    //
+    //     var command = _syncCommandFactory.CreateFor(task, _replicaPath);
+    //     // try
+    //     // {
+    //         _logger.LogInformation("[Retry] Starting attempt {MaxAttempts} for {Path}" , maxAttempts, task.Entry.Path);
+    //         await _executor.ExecuteAsync(command, cancellationToken);
+    //         _batchState.FlushFailures(task);
+    //     // }
+    //     // catch (Exception ex)
+    //     // {
+    //     //     _logger.LogWarning(ex, "[Retry] First attempt failed for {Path}, initiating retries...", task.Entry.Path);
+    //     //     _batchState.MarkFailure(task, ex); // Optional for diagnostics
+    //     // }
+    //
+    //     // if (_batchState.GetFailureCount() > 0)
+    //     // {
+    //     //     for (int attempt = 2; attempt <= maxAttempts; attempt++)
+    //     //     {
+    //     //         _logger.LogInformation("[Retry] Starting attempt {Attempt}/{MaxAttempts} for {Path}", attempt, maxAttempts, task.Entry.Path);
+    //     //         command = _syncCommandFactory.CreateFor(task, _replicaPath);
+    //     //
+    //     //         try
+    //     //         {
+    //     //             await _executor.ExecuteAsync(command, cancellationToken);
+    //     //             _batchState.FlushFailures(task); // ✅ success clears failures
+    //     //             return;
+    //     //         }
+    //     //         catch (Exception ex)
+    //     //         {
+    //     //             _batchState.MarkFailure(task, ex);
+    //     //
+    //     //             if (attempt == maxAttempts)
+    //     //                 _logger.LogError(ex, "[Retry] Final attempt {MaxAttempts} failed for {Path}", maxAttempts, task.Entry.Path);
+    //     //             else
+    //     //                 await Task.Delay(delayMs);
+    //     //         }
+    //     //     }
+    //     // }
+    //
+    //     _batchState.FlushFailures(task);
+    // }
 }
