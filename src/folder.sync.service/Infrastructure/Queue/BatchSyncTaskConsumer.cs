@@ -49,15 +49,10 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
                 // Collect items until BatchSize or timer elapses
                 while (buffer.Count < BatchSize &&
                        reader.Reader.TryRead(out var task))
-                {
                     buffer.Add(task);
-                }
 
                 // Wait only if we haven't filled the batch
-                if (buffer.Count < BatchSize)
-                {
-                    await flushTimer.WaitForNextTickAsync(cancellationToken);
-                }
+                if (buffer.Count < BatchSize) await flushTimer.WaitForNextTickAsync(cancellationToken);
 
                 if (buffer.Count == 0)
                     continue;
@@ -71,41 +66,51 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
                 sw.Stop();
                 _logger.LogInformation(
                     "Batch processed {Count} in {ElapsedMs}ms. Success={Success} Failed={Fail}",
-                    buffer.Count, sw.ElapsedMilliseconds, _batchState.SuccessCount, _batchState.FailedCount);
+                    buffer.Count, sw.ElapsedMilliseconds,
+                    _batchState.GetSuccessCount(), _batchState.GetFailureCount());
 
                 buffer.Clear();
             }
         }
-        catch (ChannelClosedException) { /* graceful exit */ }
+        catch (ChannelClosedException)
+        {
+            /* graceful exit */
+        }
     }
 
     private async Task ExecuteWithRetryAsync(SyncTask task, CancellationToken cancellationToken)
     {
-        const int maxRetries = 2;
-        const int delayMs = 500;
+        const int delayMs = 200;
 
-        for (int attempt = 0; attempt <= maxRetries; attempt++)
+        for (var attempt = 1; attempt <= AppConstants.MaxAttempts; attempt++)
         {
+            if (attempt < AppConstants.MaxAttempts)
+            {
+                _logger.LogInformation("[Retry]  Starting attempt {Attempt}/{MaxAttempts} for {Path}", attempt, AppConstants.MaxAttempts, task.Entry.Path);
+            }
+            else
+            {
+                _logger.LogError("[Retry] Last attempt reached {MaxAttempts} for {Path}", AppConstants.MaxAttempts, task.Entry.Path);
+            }
+
             var command = _syncCommandFactory.CreateFor(task, _replicaPath);
 
             try
             {
                 await _executor.ExecuteAsync(command, cancellationToken);
-                _batchState.MarkSuccess(task);
-                return;
             }
-            catch (IOException ex) when (attempt < maxRetries)
+            catch
             {
-                _logger.LogWarning("File locked. Retrying in {Delay}ms: {Path}", delayMs, task.Entry.Path);
-                await Task.Delay(delayMs, cancellationToken);
+                await Task.Delay(delayMs);
             }
-            catch (Exception ex)
-            {
-                _batchState.MarkFailure(task, ex);
-                _logger.LogWarning(ex, "Sync task failed permanently: {Path}", task.Entry.Path);
-                return;
-            }
-        }
-    }
 
+            _batchState.FlushFailures(task);
+        }
+
+        _logger.LogInformation(
+            "[Retry] Batch summary: Success={SuccessCount}, Failed={FailedCount}, Retried={RetriedCount}",
+            _batchState.GetSuccessCount(),
+            _batchState.GetFailureCount(),
+            _batchState.GetRetryCount());
+    }
 }
