@@ -79,7 +79,7 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
                     BatchDuration.Record(sw.ElapsedMilliseconds);
 
                     if (AppConstants.IsMetricsEnabled)
-                        _logger.LogInformation(
+                        _logger.LogDebug(
                             "[Metrics] Tasks={Total} Success={Success} Failed={Failed} Duration={Elapsed}ms",
                             buffer.Count, success, failure, sw.ElapsedMilliseconds);
 

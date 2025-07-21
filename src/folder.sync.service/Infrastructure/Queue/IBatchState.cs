@@ -1,6 +1,6 @@
 using folder.sync.service.Infrastructure.Labeling;
 
-namespace folder.sync.service.Infrastructure;
+namespace folder.sync.service.Infrastructure.Queue;
 
 public interface IBatchState
 {

@@ -1,5 +1,6 @@
 using folder.sync.service.Infrastructure.FileManager;
 using folder.sync.service.Infrastructure.Labeling;
+using folder.sync.service.Infrastructure.Queue;
 
 namespace folder.sync.service.Infrastructure.Commanding;
 

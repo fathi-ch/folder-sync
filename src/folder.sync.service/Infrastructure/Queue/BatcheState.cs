@@ -1,9 +1,10 @@
 using System.Collections.Concurrent;
 using folder.sync.service.Infrastructure;
-using folder.sync.service.Infrastructure.FileManager;
 using folder.sync.service.Infrastructure.Labeling;
 
-// 2. Updated thread-safe BatchState
+namespace folder.sync.service.Infrastructure.Queue;
+
+
 public class BatchState : IBatchState
 {
     private readonly ConcurrentDictionary<string, SyncTask> _successes = new();

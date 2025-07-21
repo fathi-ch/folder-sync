@@ -1,4 +1,4 @@
-namespace folder.sync.service.Infrastructure;
+namespace folder.sync.service.Infrastructure.Queue;
 
 public record BatchStats(
     int Count,
