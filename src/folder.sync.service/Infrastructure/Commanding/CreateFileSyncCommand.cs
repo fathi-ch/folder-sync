@@ -28,8 +28,8 @@ public record CreateFileSyncCommand : ISyncCommand
     {
         try
         {
-            await _fileSystemOperationDispatcher.DispatchAsync(new CreateFileOperation(_source.Path, _replicaPath), cancellationToken);
-            _batchState.MarkSuccess(_task);
+           await _fileSystemOperationDispatcher.DispatchAsync(new CreateFileOperation(_source.Path, _replicaPath), cancellationToken);
+           _batchState.MarkSuccess(_task);
         }
         catch (OperationCanceledException ex)
         {

@@ -15,6 +15,14 @@ public class FileSystemOperationDispatcher
 
         var handlerType = typeof(IFileOperationHandler<>).MakeGenericType(op.GetType());
         dynamic handler = scope.ServiceProvider.GetRequiredService(handlerType);
-        await handler.HandleAsync((dynamic)op, ct);
+        try
+        {
+            await handler.HandleAsync((dynamic)op, ct);
+        }
+        catch (Exception)
+        {
+            
+            throw;
+        }
     }
 }
