@@ -111,7 +111,7 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
 
     private async Task ExecuteTaskAsync(SyncTask task, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("[Sync] Executing task for {Path}", task.Entry.Path);
+        _logger.LogDebug("[Sync] Executing task for {Path}", task.Entry.Path);
         var command = _syncCommandFactory.CreateFor(task, _replicaPath);
 
         try
@@ -130,7 +130,7 @@ public class BatchSyncTaskConsumer : ISyncTaskConsumer
         const int maxAttempts = AppConstants.MaxBatchSize;
         const int delayMs = 200;
 
-        _logger.LogInformation("[Sync] Executing initial batch with {Count} tasks", tasks.Count);
+        _logger.LogDebug("[Sync] Executing initial batch with {Count} tasks", tasks.Count);
         var initialExecutions = tasks.Select(task => ExecuteTaskAsync(task, cancellationToken));
         await Task.WhenAll(initialExecutions);
 
