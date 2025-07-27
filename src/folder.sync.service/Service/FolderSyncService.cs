@@ -25,11 +25,13 @@ public class FolderSyncService : BackgroundService
     {
         var timer = new PeriodicTimer(TimeSpan.FromSeconds(_intervalInSec));
         
-        while (await timer.WaitForNextTickAsync(stoppingToken))
+        while (!stoppingToken.IsCancellationRequested)
             try
             {
                 _logger.LogInformation("Initiating periodical replication cycle every: {IntervalSeconds}s From {Source} To {Replica}.", _intervalInSec, _sourcePath, _replicaPath);
                 await _folderSyncPipeline.RunAsync(_sourcePath, _replicaPath, stoppingToken);
+                
+                await timer.WaitForNextTickAsync(stoppingToken);
             }
             catch (OperationCanceledException ex) when (stoppingToken.IsCancellationRequested)
             {
